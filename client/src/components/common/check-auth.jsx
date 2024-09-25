@@ -29,7 +29,7 @@ const CheckAuth = ({ isAuthenticated, user, children }) => {
     isAuthenticated &&
     user?.role !== 'admin' &&
     location.pathname.includes('admin')
-  ) {
+  ) { 
     return <Navigate to="/unauth-page" />
   }
 
