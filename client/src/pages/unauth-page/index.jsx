@@ -1,9 +1,5 @@
-
-const UnauthPage = () => {
-  return (
-    <div>
-        you dont have access to view this page.
-    </div>
-  )
+function UnauthPage() {
+  return <h1>You don't have access to view this page</h1>
 }
+
 export default UnauthPage

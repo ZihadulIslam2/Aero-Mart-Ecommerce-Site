@@ -16,3 +16,7 @@
 1.42 min error
     - solve the error go to the last done.
 - 1.17 done
+
+<!-- new way to to do -->
+make the details.
+- 140 min
