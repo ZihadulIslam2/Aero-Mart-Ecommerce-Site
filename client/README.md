@@ -144,7 +144,12 @@
     - use axios.post now we need to call our 
     - images will uploaded
     - add some kind of loading when uploading the img
-    - 
+    ### product-tile.jsx
+      - AdminProductTile
+      - card install card component shadcn.ui
+      - render the img
+      - 
+
 
 # pages
   ## admin-view
@@ -153,4 +158,14 @@
     - add lable titels name etc to index.js config file.
     - sheet componet
     - onSubmit function
-    -
+    - need to add img url from cloudary
+    - add products
+    - fatch data
+    - delete, upgrade from admin view
+# store
+  ## admin
+    ### products-slice
+      #### index.js
+        - creating the slice
+        - AdminProductSlice
+

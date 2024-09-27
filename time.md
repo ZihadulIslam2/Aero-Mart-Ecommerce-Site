@@ -21,3 +21,5 @@ make the details.
 - 2.00 h
 - 2.56 h
 - 3.56 h
+- 4.31 h
+- 
