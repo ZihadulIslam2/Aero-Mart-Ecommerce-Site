@@ -1,7 +1,5 @@
 # Aero-Mart-Ecommerce-Site
 
-
- 
 ## cheak-auth.jsx
 
     - auth/login how can access this page thoes who not login or register, thoes who are not authenticated can access this page.
@@ -79,6 +77,9 @@
   - export registerFormControl 
   - is an array
   - this configaration will recive on form componet
+  - create object.
+  - export const adminSideberMenuItems.
+  - 
 
 
 ### register.jsx (page>auth>.)
@@ -112,4 +113,44 @@
      -  add the thost to manin component
   - login user createAsyncThunk 
   - auth/login
-  - 
+
+[we well store our imges on cloudnary]
+
+# components
+  ## admin-view
+  ### header.jsx
+    - use hamburger manue  (lucide.dev)
+    - Toggale menu
+    - use logout icon
+    - reacive the props setOpen
+    - 
+  ### sideber.jsx
+    - take aside component
+    - menuItems component
+    - return a nev
+    - Sheet component for the hamberger.
+    - install the sheed component.
+    - pass arguments
+    - setup the sheed 
+  ### layout.jsx
+    - 
+  ### image-uploads.jsx
+    - create components ProductImageUpload
+    - label Upload Image
+    - create chose fiel 
+    - Upload cloud icon
+    - pass the myfile.
+    - pass the image file we created
+    - use axios.post now we need to call our 
+    - images will uploaded
+    - add some kind of loading when uploading the img
+    - 
+
+# pages
+  ## admin-view
+  ### products.jsx
+    - add new product button
+    - add lable titels name etc to index.js config file.
+    - sheet componet
+    - onSubmit function
+    -
