@@ -19,3 +19,4 @@ make the details.
 
 - 140 min
 - 2.00 h
+- 2.56 h 

@@ -1,7 +1,7 @@
 # Aero-Mart-Ecommerce-Site
 
 
-
+ 
 ## cheak-auth.jsx
 
     - auth/login how can access this page thoes who not login or register, thoes who are not authenticated can access this page.
@@ -44,12 +44,13 @@
         /> like this way.
 
 
-# App.js
+# App.jsx
   - we have Layouts
     - auth layout
     - admin
     - shopping layout 
   - create add unAuthPage  for routing.
+  - use selector to get the user role.
   - 
   
 ### unauth-page folder
@@ -86,6 +87,7 @@
   - add a link for login page
   - add commonForm component
   - create props formControls={registerFormControls}
+  - onSubmit button
   
 
 ### login page
@@ -93,3 +95,21 @@
   - sign in to account 
   - from login page we can go to the register page.
   - pass the loginfrom control   formControls={loginFormControls}
+  - useDispatch
+  - pass the form data 
+  - i will get info on payload
+
+
+### auth-slice index.js
+  - use axios
+  - In this all the server link is added.
+  - createAsyncThunk 
+  - when the sign up clicked we need to call this registerUser user AsyncThunk
+  -  useDispatch ()
+  -  Toast need to add.
+     -  using shadcn ui
+     -  this is a popup notification.
+     -  add the thost to manin component
+  - login user createAsyncThunk 
+  - auth/login
+  - 
