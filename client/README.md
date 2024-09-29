@@ -101,7 +101,8 @@
   - i will get info on payload
 
 
-### auth-slice index.js
+### auth-slice 
+  ## index.js
   - use axios
   - In this all the server link is added.
   - createAsyncThunk 
@@ -113,6 +114,11 @@
      -  add the thost to manin component
   - login user createAsyncThunk 
   - auth/login
+  - create auth logout function.
+  - add the /logout option
+  - make the user is null.
+  - make the isAhthanticated false
+  - 
 
 [we well store our imges on cloudnary]
 
@@ -123,6 +129,12 @@
     - Toggale menu
     - use logout icon
     - reacive the props setOpen
+    - add onClick and handel logout
+    - create function handelLogoOut
+    - useDispatch
+    - remove the tokhen on the aplication Cookies.
+    - after logout if i want to go to the admin product page it won't go
+    - it will stay to the admin product page.
     - 
   ### sideber.jsx
     - take aside component
@@ -148,7 +160,8 @@
       - AdminProductTile
       - card install card component shadcn.ui
       - render the img
-      - 
+      - add img src and get the title
+      - take a Card Contanat  ****
 
 
 # pages
