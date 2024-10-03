@@ -1,23 +1,13 @@
-import Address from "@/components/shopping-view/address";
-import img from "../../assets/account.jpg";
-import { useDispatch, useSelector } from "react-redux";
-import UserCartItemsContent from "@/components/shopping-view/cart-items-content";
-import { Button } from "@/components/ui/button";
-import { useState } from "react";
-import { createNewOrder } from "@/store/shop/order-slice";
-import { Navigate } from "react-router-dom";
-import { useToast } from "@/components/ui/use-toast";
-
 function ShoppingCheckout() {
-  const { cartItems } = useSelector((state) => state.shopCart);
-  const { user } = useSelector((state) => state.auth);
-  const { approvalURL } = useSelector((state) => state.shopOrder);
-  const [currentSelectedAddress, setCurrentSelectedAddress] = useState(null);
-  const [isPaymentStart, setIsPaymemntStart] = useState(false);
-  const dispatch = useDispatch();
-  const { toast } = useToast();
+  const { cartItems } = useSelector((state) => state.shopCart)
+  const { user } = useSelector((state) => state.auth)
+  const { approvalURL } = useSelector((state) => state.shopOrder)
+  const [currentSelectedAddress, setCurrentSelectedAddress] = useState(null)
+  const [isPaymentStart, setIsPaymemntStart] = useState(false)
+  const dispatch = useDispatch()
+  const { toast } = useToast()
 
-  console.log(currentSelectedAddress, "cartItems");
+  console.log(currentSelectedAddress, 'cartItems')
 
   const totalCartAmount =
     cartItems && cartItems.items && cartItems.items.length > 0
@@ -30,24 +20,20 @@ function ShoppingCheckout() {
               currentItem?.quantity,
           0
         )
-      : 0;
+      : 0
 
-  function handleInitiatePaypalPayment() {
-    if (cartItems.length === 0) {
-      toast({
-        title: "Your cart is empty. Please add items to proceed",
-        variant: "destructive",
-      });
-
-      return;
+  // The logic for handling the checkout process
+  const handleCheckout = () => {
+    if (cartItems?.items?.length === 0) {
+      return // Early exit if there are no cart items
     }
     if (currentSelectedAddress === null) {
       toast({
-        title: "Please select one address to proceed.",
-        variant: "destructive",
-      });
+        title: 'Please select one address to proceed.',
+        variant: 'destructive',
+      })
 
-      return;
+      return // Early exit if no address is selected
     }
 
     const orderData = {
@@ -71,28 +57,27 @@ function ShoppingCheckout() {
         phone: currentSelectedAddress?.phone,
         notes: currentSelectedAddress?.notes,
       },
-      orderStatus: "pending",
-      paymentMethod: "paypal",
-      paymentStatus: "pending",
+      orderStatus: 'pending',
+      paymentStatus: 'pending',
       totalAmount: totalCartAmount,
       orderDate: new Date(),
       orderUpdateDate: new Date(),
-      paymentId: "",
-      payerId: "",
-    };
+      paymentId: '',
+      payerId: '',
+    }
 
     dispatch(createNewOrder(orderData)).then((data) => {
-      console.log(data, "sangam");
+      console.log(data, 'sangam')
       if (data?.payload?.success) {
-        setIsPaymemntStart(true);
+        setIsPaymemntStart(true)
       } else {
-        setIsPaymemntStart(false);
+        setIsPaymemntStart(false)
       }
-    });
+    })
   }
 
   if (approvalURL) {
-    window.location.href = approvalURL;
+    window.location.href = approvalURL
   }
 
   return (
@@ -118,16 +103,12 @@ function ShoppingCheckout() {
             </div>
           </div>
           <div className="mt-4 w-full">
-            <Button onClick={handleInitiatePaypalPayment} className="w-full">
-              {isPaymentStart
-                ? "Processing Paypal Payment..."
-                : "Checkout with Paypal"}
-            </Button>
+            <Button onClick={handleCheckout}>Checkout</Button>
           </div>
         </div>
       </div>
     </div>
-  );
+  )
 }
 
-export default ShoppingCheckout;
+export default ShoppingCheckout

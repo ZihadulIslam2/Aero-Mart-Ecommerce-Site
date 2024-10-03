@@ -1,4 +1,3 @@
-const paypal = require("../../helpers/paypal");
 const Order = require("../../models/Order");
 const Cart = require("../../models/Cart");
 const Product = require("../../models/Product");
@@ -23,7 +22,7 @@ const createOrder = async (req, res) => {
     const create_payment_json = {
       intent: "sale",
       payer: {
-        payment_method: "paypal",
+        payment_method: "",
       },
       redirect_urls: {
         return_url: "http://localhost:5173/shop/paypal-return",

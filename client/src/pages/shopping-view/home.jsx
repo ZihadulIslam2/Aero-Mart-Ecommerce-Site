@@ -1,7 +1,7 @@
-import { Button } from "@/components/ui/button";
-import bannerOne from "../../assets/banner-1.webp";
-import bannerTwo from "../../assets/banner-2.webp";
-import bannerThree from "../../assets/banner-3.webp";
+import { Button } from '@/components/ui/button'
+import bannerOne from '../../assets/banner-1.webp'
+import bannerTwo from '../../assets/banner-2.webp'
+import bannerThree from '../../assets/banner-3.webp'
 import {
   Airplay,
   BabyIcon,
@@ -16,64 +16,65 @@ import {
   UmbrellaIcon,
   WashingMachine,
   WatchIcon,
-} from "lucide-react";
-import { Card, CardContent } from "@/components/ui/card";
-import { useEffect, useState } from "react";
-import { useDispatch, useSelector } from "react-redux";
+} from 'lucide-react'
+import { Card, CardContent } from '@/components/ui/card'
+import { useEffect, useState } from 'react'
+import { useDispatch, useSelector } from 'react-redux'
 import {
   fetchAllFilteredProducts,
   fetchProductDetails,
-} from "@/store/shop/products-slice";
-import ShoppingProductTile from "@/components/shopping-view/product-tile";
-import { useNavigate } from "react-router-dom";
-import { addToCart, fetchCartItems } from "@/store/shop/cart-slice";
-import { useToast } from "@/components/ui/use-toast";
-import ProductDetailsDialog from "@/components/shopping-view/product-details";
-import { getFeatureImages } from "@/store/common-slice";
+} from '@/store/shop/products-slice'
+import ShoppingProductTile from '@/components/shopping-view/product-tile'
+import { useNavigate } from 'react-router-dom'
+import { addToCart, fetchCartItems } from '@/store/shop/cart-slice'
+import { useToast } from '@/components/ui/use-toast'
+import ProductDetailsDialog from '@/components/shopping-view/product-details'
+import { getFeatureImages } from '@/store/common-slice'
 
 const categoriesWithIcon = [
-  { id: "men", label: "Men", icon: ShirtIcon },
-  { id: "women", label: "Women", icon: CloudLightning },
-  { id: "kids", label: "Kids", icon: BabyIcon },
-  { id: "accessories", label: "Accessories", icon: WatchIcon },
-  { id: "footwear", label: "Footwear", icon: UmbrellaIcon },
-];
+  { id: 'men', label: 'Men', icon: ShirtIcon },
+  { id: 'women', label: 'Women', icon: CloudLightning },
+  { id: 'kids', label: 'Kids', icon: BabyIcon },
+  { id: 'accessories', label: 'Accessories', icon: WatchIcon },
+  { id: 'footwear', label: 'Footwear', icon: UmbrellaIcon },
+]
 
 const brandsWithIcon = [
-  { id: "nike", label: "Nike", icon: Shirt },
-  { id: "adidas", label: "Adidas", icon: WashingMachine },
-  { id: "puma", label: "Puma", icon: ShoppingBasket },
-  { id: "levi", label: "Levi's", icon: Airplay },
-  { id: "zara", label: "Zara", icon: Images },
-  { id: "h&m", label: "H&M", icon: Heater },
-];
+  { id: 'nike', label: 'Nike', icon: Shirt },
+  { id: 'adidas', label: 'Adidas', icon: WashingMachine },
+  { id: 'puma', label: 'Puma', icon: ShoppingBasket },
+  { id: 'levi', label: "Levi's", icon: Airplay },
+  { id: 'zara', label: 'Zara', icon: Images },
+  { id: 'h&m', label: 'H&M', icon: Heater },
+]
+
 function ShoppingHome() {
-  const [currentSlide, setCurrentSlide] = useState(0);
+  const [currentSlide, setCurrentSlide] = useState(0)
   const { productList, productDetails } = useSelector(
     (state) => state.shopProducts
-  );
-  const { featureImageList } = useSelector((state) => state.commonFeature);
+  )
+  const { featureImageList } = useSelector((state) => state.commonFeature)
 
-  const [openDetailsDialog, setOpenDetailsDialog] = useState(false);
+  const [openDetailsDialog, setOpenDetailsDialog] = useState(false)
 
-  const { user } = useSelector((state) => state.auth);
+  const { user } = useSelector((state) => state.auth)
 
-  const dispatch = useDispatch();
-  const navigate = useNavigate();
-  const { toast } = useToast();
+  const dispatch = useDispatch()
+  const navigate = useNavigate()
+  const { toast } = useToast()
 
   function handleNavigateToListingPage(getCurrentItem, section) {
-    sessionStorage.removeItem("filters");
+    sessionStorage.removeItem('filters')
     const currentFilter = {
       [section]: [getCurrentItem.id],
-    };
+    }
 
-    sessionStorage.setItem("filters", JSON.stringify(currentFilter));
-    navigate(`/shop/listing`);
+    sessionStorage.setItem('filters', JSON.stringify(currentFilter))
+    navigate(`/shop/listing`)
   }
 
   function handleGetProductDetails(getCurrentProductId) {
-    dispatch(fetchProductDetails(getCurrentProductId));
+    dispatch(fetchProductDetails(getCurrentProductId))
   }
 
   function handleAddtoCart(getCurrentProductId) {
@@ -85,40 +86,38 @@ function ShoppingHome() {
       })
     ).then((data) => {
       if (data?.payload?.success) {
-        dispatch(fetchCartItems(user?.id));
+        dispatch(fetchCartItems(user?.id))
         toast({
-          title: "Product is added to cart",
-        });
+          title: 'Product is added to cart',
+        })
       }
-    });
+    })
   }
 
   useEffect(() => {
-    if (productDetails !== null) setOpenDetailsDialog(true);
-  }, [productDetails]);
+    if (productDetails !== null) setOpenDetailsDialog(true)
+  }, [productDetails])
 
   useEffect(() => {
     const timer = setInterval(() => {
-      setCurrentSlide((prevSlide) => (prevSlide + 1) % featureImageList.length);
-    }, 15000);
+      setCurrentSlide((prevSlide) => (prevSlide + 1) % featureImageList.length)
+    }, 15000)
 
-    return () => clearInterval(timer);
-  }, [featureImageList]);
+    return () => clearInterval(timer)
+  }, [featureImageList])
 
   useEffect(() => {
     dispatch(
       fetchAllFilteredProducts({
         filterParams: {},
-        sortParams: "price-lowtohigh",
+        sortParams: 'price-lowtohigh',
       })
-    );
-  }, [dispatch]);
-
-  console.log(productList, "productList");
+    )
+  }, [dispatch])
 
   useEffect(() => {
-    dispatch(getFeatureImages());
-  }, [dispatch]);
+    dispatch(getFeatureImages())
+  }, [dispatch])
 
   return (
     <div className="flex flex-col min-h-screen">
@@ -129,7 +128,7 @@ function ShoppingHome() {
                 src={slide?.image}
                 key={index}
                 className={`${
-                  index === currentSlide ? "opacity-100" : "opacity-0"
+                  index === currentSlide ? 'opacity-100' : 'opacity-0'
                 } absolute top-0 left-0 w-full h-full object-cover transition-opacity duration-1000`}
               />
             ))
@@ -169,8 +168,9 @@ function ShoppingHome() {
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
             {categoriesWithIcon.map((categoryItem) => (
               <Card
+                key={categoryItem.id}
                 onClick={() =>
-                  handleNavigateToListingPage(categoryItem, "category")
+                  handleNavigateToListingPage(categoryItem, 'category')
                 }
                 className="cursor-pointer hover:shadow-lg transition-shadow"
               >
@@ -190,7 +190,8 @@ function ShoppingHome() {
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
             {brandsWithIcon.map((brandItem) => (
               <Card
-                onClick={() => handleNavigateToListingPage(brandItem, "brand")}
+                key={brandItem.id}
+                onClick={() => handleNavigateToListingPage(brandItem, 'brand')}
                 className="cursor-pointer hover:shadow-lg transition-shadow"
               >
                 <CardContent className="flex flex-col items-center justify-center p-6">
@@ -212,6 +213,7 @@ function ShoppingHome() {
             {productList && productList.length > 0
               ? productList.map((productItem) => (
                   <ShoppingProductTile
+                    key={productItem.id}
                     handleGetProductDetails={handleGetProductDetails}
                     product={productItem}
                     handleAddtoCart={handleAddtoCart}
@@ -227,7 +229,7 @@ function ShoppingHome() {
         productDetails={productDetails}
       />
     </div>
-  );
+  )
 }
 
-export default ShoppingHome;
+export default ShoppingHome
