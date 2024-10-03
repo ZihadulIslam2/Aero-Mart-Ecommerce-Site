@@ -1,51 +1,51 @@
-import ProductImageUpload from '@/components/admin-view/image-upload'
-import AdminProductTile from '@/components/admin-view/product-tile'
-import CommonForm from '@/components/common/form'
-import { Button } from '@/components/ui/button'
+import ProductImageUpload from "@/components/admin-view/image-upload";
+import AdminProductTile from "@/components/admin-view/product-tile";
+import CommonForm from "@/components/common/form";
+import { Button } from "@/components/ui/button";
 import {
   Sheet,
   SheetContent,
   SheetHeader,
   SheetTitle,
-} from '@/components/ui/sheet'
-import { useToast } from '@/components/ui/use-toast'
-import { addProductFormElements } from '@/config'
+} from "@/components/ui/sheet";
+import { useToast } from "@/components/ui/use-toast";
+import { addProductFormElements } from "@/config";
 import {
   addNewProduct,
   deleteProduct,
   editProduct,
   fetchAllProducts,
-} from '@/store/admin/products-slice'
-import { Fragment, useEffect, useState } from 'react'
-import { useDispatch, useSelector } from 'react-redux'
+} from "@/store/admin/products-slice";
+import { Fragment, useEffect, useState } from "react";
+import { useDispatch, useSelector } from "react-redux";
 
 const initialFormData = {
   image: null,
-  title: '',
-  description: '',
-  category: '',
-  brand: '',
-  price: '',
-  salePrice: '',
-  totalStock: '',
+  title: "",
+  description: "",
+  category: "",
+  brand: "",
+  price: "",
+  salePrice: "",
+  totalStock: "",
   averageReview: 0,
-}
+};
 
 function AdminProducts() {
   const [openCreateProductsDialog, setOpenCreateProductsDialog] =
-    useState(false)
-  const [formData, setFormData] = useState(initialFormData)
-  const [imageFile, setImageFile] = useState(null)
-  const [uploadedImageUrl, setUploadedImageUrl] = useState('')
-  const [imageLoadingState, setImageLoadingState] = useState(false)
-  const [currentEditedId, setCurrentEditedId] = useState(null)
+    useState(false);
+  const [formData, setFormData] = useState(initialFormData);
+  const [imageFile, setImageFile] = useState(null);
+  const [uploadedImageUrl, setUploadedImageUrl] = useState("");
+  const [imageLoadingState, setImageLoadingState] = useState(false);
+  const [currentEditedId, setCurrentEditedId] = useState(null);
 
-  const { productList } = useSelector((state) => state.adminProducts)
-  const dispatch = useDispatch()
-  const { toast } = useToast()
+  const { productList } = useSelector((state) => state.adminProducts);
+  const dispatch = useDispatch();
+  const { toast } = useToast();
 
   function onSubmit(event) {
-    event.preventDefault()
+    event.preventDefault();
 
     currentEditedId !== null
       ? dispatch(
@@ -54,13 +54,13 @@ function AdminProducts() {
             formData,
           })
         ).then((data) => {
-          console.log(data, 'edit')
+          console.log(data, "edit");
 
           if (data?.payload?.success) {
-            dispatch(fetchAllProducts())
-            setFormData(initialFormData)
-            setOpenCreateProductsDialog(false)
-            setCurrentEditedId(null)
+            dispatch(fetchAllProducts());
+            setFormData(initialFormData);
+            setOpenCreateProductsDialog(false);
+            setCurrentEditedId(null);
           }
         })
       : dispatch(
@@ -70,37 +70,37 @@ function AdminProducts() {
           })
         ).then((data) => {
           if (data?.payload?.success) {
-            dispatch(fetchAllProducts())
-            setOpenCreateProductsDialog(false)
-            setImageFile(null)
-            setFormData(initialFormData)
+            dispatch(fetchAllProducts());
+            setOpenCreateProductsDialog(false);
+            setImageFile(null);
+            setFormData(initialFormData);
             toast({
-              title: 'Product add successfully',
-            })
+              title: "Product add successfully",
+            });
           }
-        })
+        });
   }
 
   function handleDelete(getCurrentProductId) {
     dispatch(deleteProduct(getCurrentProductId)).then((data) => {
       if (data?.payload?.success) {
-        dispatch(fetchAllProducts())
+        dispatch(fetchAllProducts());
       }
-    })
+    });
   }
 
   function isFormValid() {
     return Object.keys(formData)
-      .filter((currentKey) => currentKey !== 'averageReview')
-      .map((key) => formData[key] !== '')
-      .every((item) => item)
+      .filter((currentKey) => currentKey !== "averageReview")
+      .map((key) => formData[key] !== "")
+      .every((item) => item);
   }
 
   useEffect(() => {
-    dispatch(fetchAllProducts())
-  }, [dispatch])
+    dispatch(fetchAllProducts());
+  }, [dispatch]);
 
-  console.log(formData, 'productList')
+  console.log(formData, "productList");
 
   return (
     <Fragment>
@@ -125,15 +125,15 @@ function AdminProducts() {
       <Sheet
         open={openCreateProductsDialog}
         onOpenChange={() => {
-          setOpenCreateProductsDialog(false)
-          setCurrentEditedId(null)
-          setFormData(initialFormData)
+          setOpenCreateProductsDialog(false);
+          setCurrentEditedId(null);
+          setFormData(initialFormData);
         }}
       >
         <SheetContent side="right" className="overflow-auto">
           <SheetHeader>
             <SheetTitle>
-              {currentEditedId !== null ? 'Edit Product' : 'Add New Product'}
+              {currentEditedId !== null ? "Edit Product" : "Add New Product"}
             </SheetTitle>
           </SheetHeader>
           <ProductImageUpload
@@ -150,7 +150,7 @@ function AdminProducts() {
               onSubmit={onSubmit}
               formData={formData}
               setFormData={setFormData}
-              buttonText={currentEditedId !== null ? 'Edit' : 'Add'}
+              buttonText={currentEditedId !== null ? "Edit" : "Add"}
               formControls={addProductFormElements}
               isBtnDisabled={!isFormValid()}
             />
@@ -158,7 +158,7 @@ function AdminProducts() {
         </SheetContent>
       </Sheet>
     </Fragment>
-  )
+  );
 }
 
-export default AdminProducts
+export default AdminProducts;

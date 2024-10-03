@@ -1,10 +1,10 @@
-import { Outlet } from 'react-router-dom'
-import AdminSideBar from './sidebar'
-import AdminHeader from './header'
-import { useState } from 'react'
+import { Outlet } from "react-router-dom";
+import AdminSideBar from "./sidebar";
+import AdminHeader from "./header";
+import { useState } from "react";
 
 function AdminLayout() {
-  const [openSidebar, setOpenSidebar] = useState(false)
+  const [openSidebar, setOpenSidebar] = useState(false);
 
   return (
     <div className="flex min-h-screen w-full">
@@ -18,7 +18,7 @@ function AdminLayout() {
         </main>
       </div>
     </div>
-  )
+  );
 }
 
-export default AdminLayout
+export default AdminLayout;

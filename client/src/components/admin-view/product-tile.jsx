@@ -1,5 +1,5 @@
-import { Button } from '../ui/button'
-import { Card, CardContent, CardFooter } from '../ui/card'
+import { Button } from "../ui/button";
+import { Card, CardContent, CardFooter } from "../ui/card";
 
 function AdminProductTile({
   product,
@@ -23,7 +23,7 @@ function AdminProductTile({
           <div className="flex justify-between items-center mb-2">
             <span
               className={`${
-                product?.salePrice > 0 ? 'line-through' : ''
+                product?.salePrice > 0 ? "line-through" : ""
               } text-lg font-semibold text-primary`}
             >
               ${product?.price}
@@ -36,9 +36,9 @@ function AdminProductTile({
         <CardFooter className="flex justify-between items-center">
           <Button
             onClick={() => {
-              setOpenCreateProductsDialog(true)
-              setCurrentEditedId(product?._id)
-              setFormData(product)
+              setOpenCreateProductsDialog(true);
+              setCurrentEditedId(product?._id);
+              setFormData(product);
             }}
           >
             Edit
@@ -47,7 +47,7 @@ function AdminProductTile({
         </CardFooter>
       </div>
     </Card>
-  )
+  );
 }
 
-export default AdminProductTile
+export default AdminProductTile;
