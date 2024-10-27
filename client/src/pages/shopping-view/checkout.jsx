@@ -1,13 +1,16 @@
-function ShoppingCheckout() {
-  const { cartItems } = useSelector((state) => state.shopCart)
-  const { user } = useSelector((state) => state.auth)
-  const { approvalURL } = useSelector((state) => state.shopOrder)
-  const [currentSelectedAddress, setCurrentSelectedAddress] = useState(null)
-  const [isPaymentStart, setIsPaymemntStart] = useState(false)
-  const dispatch = useDispatch()
-  const { toast } = useToast()
+import { useSelector, useDispatch } from "react-redux";
+import { useState } from "react";
 
-  console.log(currentSelectedAddress, 'cartItems')
+function ShoppingCheckout() {
+  const { cartItems } = useSelector((state) => state.shopCart);
+  const { user } = useSelector((state) => state.auth);
+  const { approvalURL } = useSelector((state) => state.shopOrder);
+  const [currentSelectedAddress, setCurrentSelectedAddress] = useState(null);
+  const [isPaymentStart, setIsPaymemntStart] = useState(false);
+  const dispatch = useDispatch();
+  const { toast } = useToast();
+
+  console.log(currentSelectedAddress, "cartItems");
 
   const totalCartAmount =
     cartItems && cartItems.items && cartItems.items.length > 0
@@ -20,20 +23,36 @@ function ShoppingCheckout() {
               currentItem?.quantity,
           0
         )
-      : 0
+      : 0;
 
+  //sslcz
+  /* const onSubmit = (body) => {
+        console.log(body)
+        data.productId = id
+
+        fetch('https://aero-mart-server-jet.vercel.app/order', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify(data),
+        })
+          .then(res=>res.json)
+          .then(result=>{
+            window.location.replace(result.url);
+            console.log(result)
+            })
+      } */
   // The logic for handling the checkout process
   const handleCheckout = () => {
     if (cartItems?.items?.length === 0) {
-      return // Early exit if there are no cart items
+      return; // Early exit if there are no cart items
     }
     if (currentSelectedAddress === null) {
       toast({
-        title: 'Please select one address to proceed.',
-        variant: 'destructive',
-      })
+        title: "Please select one address to proceed.",
+        variant: "destructive",
+      });
 
-      return // Early exit if no address is selected
+      return; // Early exit if no address is selected
     }
 
     const orderData = {
@@ -57,27 +76,27 @@ function ShoppingCheckout() {
         phone: currentSelectedAddress?.phone,
         notes: currentSelectedAddress?.notes,
       },
-      orderStatus: 'pending',
-      paymentStatus: 'pending',
+      orderStatus: "pending",
+      paymentStatus: "pending",
       totalAmount: totalCartAmount,
       orderDate: new Date(),
       orderUpdateDate: new Date(),
-      paymentId: '',
-      payerId: '',
-    }
+      paymentId: "",
+      payerId: "",
+    };
 
     dispatch(createNewOrder(orderData)).then((data) => {
-      console.log(data, 'sangam')
+      console.log(data, "sangam");
       if (data?.payload?.success) {
-        setIsPaymemntStart(true)
+        setIsPaymemntStart(true);
       } else {
-        setIsPaymemntStart(false)
+        setIsPaymemntStart(false);
       }
-    })
-  }
+    });
+  };
 
   if (approvalURL) {
-    window.location.href = approvalURL
+    window.location.href = approvalURL;
   }
 
   return (
@@ -108,7 +127,7 @@ function ShoppingCheckout() {
         </div>
       </div>
     </div>
-  )
+  );
 }
 
-export default ShoppingCheckout
+export default ShoppingCheckout;

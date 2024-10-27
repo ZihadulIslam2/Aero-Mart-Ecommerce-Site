@@ -4,7 +4,7 @@ const {
   handleImageUpload,
   addProduct,
   editProduct,
-  fetchAllProducts,
+  fetchAllProducts, 
   deleteProduct,
 } = require("../../controllers/admin/products-controller");
 

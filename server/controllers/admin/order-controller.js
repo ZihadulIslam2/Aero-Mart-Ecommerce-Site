@@ -4,6 +4,7 @@ const getAllOrdersOfAllUsers = async (req, res) => {
   try {
     const orders = await Order.find({});
 
+
     if (!orders.length) {
       return res.status(404).json({
         success: false,

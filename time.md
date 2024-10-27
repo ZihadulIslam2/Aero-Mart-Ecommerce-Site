@@ -26,5 +26,22 @@ make the details.
 - 6.32 h
 - 9.00 h
 - 10.00h
-- 10.17 h
-- 11.06 h
+- 10.17 h payment part
+  - create model on server site
+## Order.js
+      - create order schema
+      - export the order order schema
+    - create paypal.js
+      - export the paypal
+## create-order controller.js
+    - that will create a payment json
+    - pass the payment information to paypal
+    - redirect to payment page
+    - capture the payment
+    - set the status code
+    - create payment and capture the payment export
+    - get info from body
+    - create_payment_json
+    - item.price
+    - 
+  - 10.38 h
