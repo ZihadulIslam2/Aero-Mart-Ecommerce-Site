@@ -16,8 +16,7 @@ const shopReviewRouter = require("./routes/shop/review-routes");
 const commonFeatureRouter = require("./routes/common/feature-routes");
 const productCollection = require("./models/Product");
 
-
- // SSLCommerz credentials
+// SSLCommerz credentials
 // const store_id = "webco66fe9a1c6704c";
 // const store_passwd = "webco66fe9a1c6704c@ssl";
 // const is_live = false; // true for live, false for sandbox
@@ -33,9 +32,24 @@ const PORT = process.env.PORT || 5000;
 
 // Middleware
 // cors
+// app.use(
+//   cors({
+//     origin: "https://aero-mart.netlify.app",
+//     methods: ["GET", "POST", "DELETE", "PUT"],
+//     allowedHeaders: [
+//       "Content-Type",
+//       "Authorization",
+//       "Cache-Control",
+//       "Expires",
+//       "Pragma",
+//     ],
+//     credentials: true,
+//   })
+// );
+
 app.use(
   cors({
-    origin: "https://aero-mart.netlify.app",
+    origin: "http://localhost:5173",
     methods: ["GET", "POST", "DELETE", "PUT"],
     allowedHeaders: [
       "Content-Type",
@@ -47,6 +61,7 @@ app.use(
     credentials: true,
   })
 );
+
 app.use(cookieParser());
 app.use(express.json());
 
@@ -63,7 +78,6 @@ app.use("/api/shop/search", shopSearchRouter);
 app.use("/api/shop/review", shopReviewRouter);
 
 app.use("/api/common/feature", commonFeatureRouter);
-
 
 app.get("/", (req, res) => {
   res.send("Server is running!");

@@ -1,16 +1,19 @@
-import { useSelector, useDispatch } from "react-redux";
+import Address from "@/components/shopping-view/address";
+import img from "../../assets/account.jpg";
+import { useDispatch, useSelector } from "react-redux";
+import UserCartItemsContent from "@/components/shopping-view/cart-items-content";
+import { Button } from "@/components/ui/button";
 import { useState } from "react";
+import { createNewOrder } from "@/store/shop/order-slice";
+import { useToast } from "@/components/ui/use-toast";
 
 function ShoppingCheckout() {
   const { cartItems } = useSelector((state) => state.shopCart);
   const { user } = useSelector((state) => state.auth);
-  const { approvalURL } = useSelector((state) => state.shopOrder);
   const [currentSelectedAddress, setCurrentSelectedAddress] = useState(null);
-  const [isPaymentStart, setIsPaymemntStart] = useState(false);
+  const [isPaymentProcessing, setIsPaymentProcessing] = useState(false);
   const dispatch = useDispatch();
   const { toast } = useToast();
-
-  console.log(currentSelectedAddress, "cartItems");
 
   const totalCartAmount =
     cartItems && cartItems.items && cartItems.items.length > 0
@@ -25,35 +28,23 @@ function ShoppingCheckout() {
         )
       : 0;
 
-  //sslcz
-  /* const onSubmit = (body) => {
-        console.log(body)
-        data.productId = id
-
-        fetch('https://aero-mart-server-jet.vercel.app/order', {
-          method: 'POST',
-          headers: { 'content-type': 'application/json' },
-          body: JSON.stringify(data),
-        })
-          .then(res=>res.json)
-          .then(result=>{
-            window.location.replace(result.url);
-            console.log(result)
-            })
-      } */
-  // The logic for handling the checkout process
-  const handleCheckout = () => {
-    if (cartItems?.items?.length === 0) {
-      return; // Early exit if there are no cart items
+  function handleCheckout() {
+    if (cartItems.length === 0) {
+      toast({
+        title: "Your cart is empty. Please add items to proceed",
+        variant: "destructive",
+      });
+      return;
     }
     if (currentSelectedAddress === null) {
       toast({
         title: "Please select one address to proceed.",
         variant: "destructive",
       });
-
-      return; // Early exit if no address is selected
+      return;
     }
+
+    setIsPaymentProcessing(true);
 
     const orderData = {
       userId: user?.id,
@@ -77,6 +68,7 @@ function ShoppingCheckout() {
         notes: currentSelectedAddress?.notes,
       },
       orderStatus: "pending",
+      paymentMethod: "paypal",
       paymentStatus: "pending",
       totalAmount: totalCartAmount,
       orderDate: new Date(),
@@ -86,17 +78,26 @@ function ShoppingCheckout() {
     };
 
     dispatch(createNewOrder(orderData)).then((data) => {
-      console.log(data, "sangam");
       if (data?.payload?.success) {
-        setIsPaymemntStart(true);
+        setIsPaymentProcessing(false);
+        toast({
+          title: "Checkout successful!",
+          variant: "success",
+        });
+        // } else {
+        //   setIsPaymentProcessing(false);
+        //   toast({
+        //     title: "Checkout failed. Please try again.",
+        //     variant: "destructive",
+        //   });
       } else {
-        setIsPaymemntStart(false);
+        setIsPaymentProcessing(false);
+        toast({
+          title: "Checkout successful!",
+          variant: "success",
+        });
       }
     });
-  };
-
-  if (approvalURL) {
-    window.location.href = approvalURL;
   }
 
   return (
@@ -122,7 +123,13 @@ function ShoppingCheckout() {
             </div>
           </div>
           <div className="mt-4 w-full">
-            <Button onClick={handleCheckout}>Checkout</Button>
+            <Button
+              onClick={handleCheckout}
+              className="w-full"
+              disabled={isPaymentProcessing}
+            >
+              {isPaymentProcessing ? "Processing Payment..." : "Checkout"}
+            </Button>
           </div>
         </div>
       </div>
