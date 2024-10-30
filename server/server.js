@@ -1,3 +1,5 @@
+require("dotenv").config()
+
 const express = require("express");
 const mongoose = require("mongoose");
 const ObjectId = mongoose.Types.ObjectId;
@@ -23,7 +25,8 @@ const productCollection = require("./models/Product");
 
 // MongoDB connection
 mongoose
-  .connect("mongodb+srv://zihadul708:01882343242@nodetuts.xnfrv.mongodb.net/")
+  .connect(
+    process.env.MONGO_URL)
   .then(() => console.log("MongoDB connected"))
   .catch((error) => console.log(error));
 
@@ -49,7 +52,7 @@ const PORT = process.env.PORT || 5000;
 
 app.use(
   cors({
-    origin: "http://localhost:5173",
+    origin: process.env.CLIENT_BASE_URL,
     methods: ["GET", "POST", "DELETE", "PUT"],
     allowedHeaders: [
       "Content-Type",
