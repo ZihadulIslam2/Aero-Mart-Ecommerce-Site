@@ -1,3 +1,4 @@
+require('dotenv').config()
 const express = require('express')
 const mongoose = require('mongoose')
 const cookieParser = require('cookie-parser')
@@ -14,17 +15,23 @@ const shopSearchRouter = require('./routes/shop/search-routes')
 const shopReviewRouter = require('./routes/shop/review-routes')
 
 const commonFeatureRouter = require('./routes/common/feature-routes')
-const  chatRoute = require('./routes/chat.route')
+const chatRoute = require('./routes/chat.route')
 
 //create a database connection -> u can also
 //create a separate file for this and then import/use that file here
 
+const db_url = process.env.MONGO_URL
+
 mongoose
-  .connect('db_url')
+  .connect(db_url)
   .then(() => console.log('MongoDB connected'))
   .catch((error) => console.log(error))
 
 const app = express()
+
+app.get('/', (req, res) => {
+  res.json({ message: 'hello world' })
+})
 const PORT = process.env.PORT || 5000
 
 app.use(
@@ -57,7 +64,6 @@ app.use('/api/shop/review', shopReviewRouter)
 
 app.use('/api/common/feature', commonFeatureRouter)
 
-app.use("/api/chat", chatRoute);
-
+app.use('/api/chat', chatRoute)
 
 app.listen(PORT, () => console.log(`Server is now running on port ${PORT}`))
