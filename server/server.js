@@ -14,6 +14,7 @@ const shopSearchRouter = require('./routes/shop/search-routes')
 const shopReviewRouter = require('./routes/shop/review-routes')
 
 const commonFeatureRouter = require('./routes/common/feature-routes')
+const  chatRoute = require('./routes/chat.route')
 
 //create a database connection -> u can also
 //create a separate file for this and then import/use that file here
@@ -55,5 +56,8 @@ app.use('/api/shop/search', shopSearchRouter)
 app.use('/api/shop/review', shopReviewRouter)
 
 app.use('/api/common/feature', commonFeatureRouter)
+
+app.use("/api/chat", chatRoute);
+
 
 app.listen(PORT, () => console.log(`Server is now running on port ${PORT}`))
