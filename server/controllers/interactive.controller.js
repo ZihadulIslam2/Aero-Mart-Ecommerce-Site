@@ -96,28 +96,48 @@ async function chatInteractive(req, res) {
     if (intent.intent === 'search_products') {
       const keyword = intent.query || ''
       console.log('Searching products with keyword:', keyword)
-      const filters = {}
-      if (intent.params?.category) filters.category = intent.params.category
-      if (intent.params?.brand) filters.brand = intent.params.brand
+
+      // Build flexible search query
+      const searchTerms = keyword.split(/\s+/).filter((w) => w.length > 2)
       const regex = keyword ? new RegExp(keyword, 'i') : null
-      const q = {
-        ...(filters.category ? { category: filters.category } : {}),
-        ...(filters.brand ? { brand: filters.brand } : {}),
-        ...(regex
-          ? {
-              $or: [
-                { title: regex },
-                { description: regex },
-                { brand: regex },
-                { category: regex },
-              ],
-            }
-          : {}),
+
+      let q = {}
+
+      // If we have search terms, use text search
+      if (regex) {
+        q.$or = [
+          { title: regex },
+          { description: regex },
+          { brand: regex },
+          { category: regex },
+        ]
       }
+
+      // Add category as an additional OR condition if AI suggests one (not strict filter)
+      if (intent.params?.category) {
+        const categoryRegex = new RegExp(intent.params.category, 'i')
+        if (q.$or) {
+          q.$or.push({ category: categoryRegex })
+        } else {
+          q.category = categoryRegex
+        }
+      }
+
+      // Add brand filter only if explicitly mentioned
+      if (intent.params?.brand) {
+        q.brand = new RegExp(intent.params.brand, 'i')
+      }
+
       console.log('MongoDB query:', JSON.stringify(q))
       const products = await Product.find(q).limit(12)
       console.log('Found products:', products.length)
       payload.products = normalizeProducts(products)
+
+      // Update notes if no products found
+      if (products.length === 0) {
+        payload.notes =
+          "I couldn't find any matching products. Try searching with different keywords."
+      }
     }
 
     if (intent.intent === 'show_product_details' && intent.productId) {
