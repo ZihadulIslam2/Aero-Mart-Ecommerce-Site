@@ -16,6 +16,7 @@ const shopReviewRouter = require('./routes/shop/review-routes')
 
 const commonFeatureRouter = require('./routes/common/feature-routes')
 const chatRoute = require('./routes/chat.route')
+const stripePaymentRouter = require('./routes/payment/stripe-routes')
 
 //create a database connection -> u can also
 //create a separate file for this and then import/use that file here
@@ -50,6 +51,7 @@ app.use(
 )
 
 app.use(cookieParser())
+// For most routes use JSON parser
 app.use(express.json())
 app.use('/api/auth', authRouter)
 app.use('/api/admin/products', adminProductsRouter)
@@ -65,5 +67,6 @@ app.use('/api/shop/review', shopReviewRouter)
 app.use('/api/common/feature', commonFeatureRouter)
 
 app.use('/api/chat', chatRoute)
+app.use('/api/payment/stripe', stripePaymentRouter)
 
 app.listen(PORT, () => console.log(`Server is now running on port ${PORT}`))
