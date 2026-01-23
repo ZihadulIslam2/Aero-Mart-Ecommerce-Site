@@ -1,4 +1,4 @@
-const { GoogleGenerativeAI } = require('google-generativeai')
+const { GoogleGenerativeAI } = require('@google/generative-ai')
 const Product = require('../models/Product')
 const Cart = require('../models/Cart')
 const Address = require('../models/Address')
