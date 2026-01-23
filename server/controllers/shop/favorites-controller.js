@@ -12,7 +12,7 @@ async function addFavorite(req, res) {
     const fav = await Favorite.findOneAndUpdate(
       { userId, productId },
       { userId, productId },
-      { upsert: true, new: true }
+      { upsert: true, new: true },
     )
 
     res.json({ success: true, favorite: fav })

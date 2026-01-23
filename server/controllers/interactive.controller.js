@@ -132,7 +132,7 @@ async function chatInteractive(req, res) {
       const fav = await Favorite.findOneAndUpdate(
         { userId, productId: intent.productId },
         { userId, productId: intent.productId },
-        { upsert: true, new: true }
+        { upsert: true, new: true },
       )
       payload.favorite = { ok: true, productId: intent.productId }
       payload.notes ||= 'Saved to your favorites.'

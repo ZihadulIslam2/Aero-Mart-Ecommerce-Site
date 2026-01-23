@@ -110,7 +110,10 @@ function InteractiveChatPage() {
       })
       setMessages((m) => [
         ...m,
-        { role: 'bot', content: 'Address saved! Now you can proceed with checkout.' },
+        {
+          role: 'bot',
+          content: 'Address saved! Now you can proceed with checkout.',
+        },
       ])
       setShowAddressForm(false)
       setAddressForm({ address: '', city: '', pincode: '', phone: '' })

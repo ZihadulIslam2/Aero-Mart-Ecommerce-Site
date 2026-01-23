@@ -15,7 +15,7 @@ const FavoriteSchema = new mongoose.Schema(
   },
   {
     timestamps: true,
-  }
+  },
 )
 
 // Ensure one entry per user-product combo
