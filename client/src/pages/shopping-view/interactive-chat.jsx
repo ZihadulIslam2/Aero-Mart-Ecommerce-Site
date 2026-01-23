@@ -194,6 +194,13 @@ function InteractiveChatPage() {
           <div className="flex-1 overflow-y-auto p-4 grid grid-cols-2 gap-3">
             {products.map((p) => (
               <div key={p.id} className="border rounded p-2">
+                {(p.image || (p.images && p.images[0])) && (
+                  <img
+                    src={p.image || p.images[0]}
+                    alt={p.title}
+                    className="w-full h-32 object-cover rounded mb-2"
+                  />
+                )}
                 <div className="font-medium">{p.title}</div>
                 <div className="text-sm text-gray-600">
                   {p.brand} · {p.category}

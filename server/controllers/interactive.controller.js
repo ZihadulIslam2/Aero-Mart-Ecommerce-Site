@@ -32,7 +32,7 @@ Rules:
 
 async function parseAIIntent(message) {
   try {
-    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' })
+    const model = genAI.getGenerativeModel({ model: 'gemini-3-flash-preview' })
     const result = await model.generateContent({
       contents: [
         {
@@ -45,12 +45,19 @@ async function parseAIIntent(message) {
       result?.response?.text?.() ||
       result?.response?.candidates?.[0]?.content?.parts?.[0]?.text ||
       '{}'
+
+    console.log('Gemini raw response:', text)
+
     const jsonStart = text.indexOf('{')
     const jsonEnd = text.lastIndexOf('}')
     const raw = jsonStart !== -1 ? text.slice(jsonStart, jsonEnd + 1) : text
     const parsed = JSON.parse(raw)
+
+    console.log('Parsed intent:', parsed)
     return parsed
   } catch (e) {
+    console.error('parseAIIntent error:', e.message)
+    console.error('Full error:', e)
     return {
       intent: 'small_talk',
       notes: 'I can help you search and order products.',
@@ -67,7 +74,8 @@ function normalizeProducts(products) {
     salePrice: p.salePrice,
     brand: p.brand,
     category: p.category,
-    images: p.images || [],
+    image: p.image || (p.images && p.images[0]) || '',
+    images: p.images || (p.image ? [p.image] : []),
     stock: p.totalStock,
   }))
 }
@@ -78,13 +86,16 @@ async function chatInteractive(req, res) {
     const message = (req.body.message || '').trim()
     if (!message) return res.status(400).json({ error: 'Message required' })
 
+    console.log('User message:', message)
     const intent = await parseAIIntent(message)
+    console.log('Extracted intent:', intent)
 
     // Default response payload
     const payload = { notes: intent.notes || '', intent: intent.intent }
 
     if (intent.intent === 'search_products') {
       const keyword = intent.query || ''
+      console.log('Searching products with keyword:', keyword)
       const filters = {}
       if (intent.params?.category) filters.category = intent.params.category
       if (intent.params?.brand) filters.brand = intent.params.brand
@@ -103,7 +114,9 @@ async function chatInteractive(req, res) {
             }
           : {}),
       }
+      console.log('MongoDB query:', JSON.stringify(q))
       const products = await Product.find(q).limit(12)
+      console.log('Found products:', products.length)
       payload.products = normalizeProducts(products)
     }
 
@@ -165,6 +178,7 @@ async function chatInteractive(req, res) {
       }
     }
 
+    console.log('Final payload:', JSON.stringify(payload, null, 2))
     return res.json(payload)
   } catch (err) {
     console.error('interactive chat error', err)
