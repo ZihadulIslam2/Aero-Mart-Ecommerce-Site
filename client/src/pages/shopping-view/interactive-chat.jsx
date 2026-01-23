@@ -19,6 +19,9 @@ function InteractiveChatPage() {
   const [products, setProducts] = useState([])
   const [confirmation, setConfirmation] = useState(null)
   const [showAddressForm, setShowAddressForm] = useState(false)
+  const [sessionId] = useState(
+    () => `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+  )
   const [addressForm, setAddressForm] = useState({
     address: '',
     city: '',
@@ -52,6 +55,7 @@ function InteractiveChatPage() {
         {
           message: input,
           userId: user?._id,
+          sessionId: sessionId,
         },
       )
       const data = res.data

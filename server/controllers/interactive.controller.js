@@ -21,18 +21,20 @@ const userContext = new Map()
 const SYSTEM_PROMPT = `You are Aero Mart's shopping assistant. Respond with ONLY a valid JSON object, no other text.
 {
   "intent": "search_products|show_product_details|add_to_cart|add_favorite|ensure_address|confirm_order|small_talk",
-  "query": "search keywords if applicable",
-  "productId": "product ID if applicable",
+  "query": "product name or search keywords (NOT an ID - only use for text search)",
+  "productId": null,
   "quantity": 1,
   "notes": "brief response to user (required, at least 5 words)",
   "params": {"category": null, "brand": null}
 }
 RULES:
 1. ALWAYS include "notes" with a natural response (never empty)
-2. For search, set intent=search_products with query
-3. For details, set intent=show_product_details
-4. For "order it/buy this", use last product ID with intent=confirm_order
-5. Keep responses helpful and concise`
+2. NEVER put product IDs or database IDs in query field
+3. For questions like "how many stock", "what's the price", "tell me more" - the user is asking about LAST product shown
+4. For contextual references ("this product", "it", "that one", "stock", "price") - set intent=show_product_details with NO query
+5. For search, set intent=search_products with query (product name/keywords only)
+6. Never include IDs anywhere except productId field (which should be null)
+7. Keep responses helpful and concise`
 
 async function parseAIIntent(message, userId, lastProductId, retryCount = 0) {
   const MAX_RETRIES = 2
@@ -41,10 +43,14 @@ async function parseAIIntent(message, userId, lastProductId, retryCount = 0) {
     // Add context about last product if available
     let contextStr = SYSTEM_PROMPT
     if (lastProductId) {
-      contextStr += `\n\nIMPORTANT: The user was just shown a product with ID: ${lastProductId}. If they say "order it", "buy this", "purchase this", use this productId.`
+      contextStr += `\n\nIMPORTANT: The user was just shown a product with ID: ${lastProductId}. If they say "order it", "buy this", "purchase this", use this lastProductId.`
     }
 
-    const prompt = contextStr + '\nUser: ' + message
+    const prompt =
+      contextStr +
+      '\n\nUser message: ' +
+      message +
+      '\n\nRespond with ONLY valid JSON (no other text).'
 
     console.log('Calling Ollama API:', OLLAMA_API)
 
@@ -124,14 +130,16 @@ function normalizeProducts(products) {
 
 async function chatInteractive(req, res) {
   try {
-    const userId = req.body.userId || req.user?.id // if auth middleware sets req.user
+    // Use a session-based ID if user not authenticated
+    const userId = req.body.userId || req.body.sessionId || 'anonymous'
     const message = (req.body.message || '').trim()
     if (!message) return res.status(400).json({ error: 'Message required' })
 
     console.log('User message:', message)
+    console.log('UserId:', userId)
 
     // Get last product context for this user
-    const lastProductId = userId ? userContext.get(userId) : null
+    const lastProductId = userContext.get(userId)
     console.log('Last product context:', lastProductId)
 
     const intent = await parseAIIntent(message, userId, lastProductId)
@@ -208,18 +216,40 @@ async function chatInteractive(req, res) {
         }
       }
 
+      // If query looks like a productId (24 hex chars), skip regex search and use it as productId instead
+      if (!product && intent.query && /^[a-f\d]{24}$/i.test(intent.query)) {
+        try {
+          product = await Product.findById(intent.query)
+          console.log(
+            `Query is a valid ObjectId, found:`,
+            product ? product.title : 'none',
+          )
+        } catch (e) {
+          console.warn('Invalid query as ObjectId:', intent.query)
+          product = null
+        }
+      }
+
       // If no productId found or invalid, try to search by query name
-      if (!product && intent.query) {
+      if (!product && intent.query && !/^[a-f\d]{24}$/i.test(intent.query)) {
         const nameRegex = new RegExp(intent.query, 'i')
         product = await Product.findOne({
           $or: [{ title: nameRegex }, { description: nameRegex }],
         })
+        console.log(
+          `Searched by query "${intent.query}", found:`,
+          product ? product.title : 'none',
+        )
       }
 
-      // Fall back to last product context
+      // Fall back to last product context (most important for contextual questions)
       if (!product && lastProductId) {
         try {
           product = await Product.findById(lastProductId)
+          console.log(
+            'Using lastProductId context, found:',
+            product ? product.title : 'none',
+          )
         } catch (e) {
           console.warn('Invalid lastProductId:', lastProductId)
           product = null
