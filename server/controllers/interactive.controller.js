@@ -1,65 +1,69 @@
-const { GoogleGenerativeAI } = require('@google/generative-ai')
+// const { GoogleGenerativeAI } = require('@google/generative-ai')
+const axios = require('axios')
 const Product = require('../models/Product')
 const Cart = require('../models/Cart')
 const Address = require('../models/Address')
 const Order = require('../models/Order')
 const Favorite = require('../models/Favorite')
 
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '')
+// Commented out Gemini - using local Ollama instead
+// const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '')
+
+// Ollama API endpoint (running locally on port 11434)
+const OLLAMA_API =
+  process.env.OLLAMA_API || 'http://localhost:11434/api/generate'
+const OLLAMA_MODEL = process.env.OLLAMA_MODEL || 'llama3.1:8b'
 
 // In-memory session storage for context (userId -> last product)
 const userContext = new Map()
 
 // System instruction for tool-like JSON responses
-const SYSTEM_PROMPT = `
-You are Aero Mart's shopping assistant. Respond with a single JSON object only, no prose.
-Schema:
+const SYSTEM_PROMPT = `You are Aero Mart's shopping assistant. Respond with ONLY a valid JSON object, no other text.
 {
   "intent": "search_products|show_product_details|add_to_cart|add_favorite|ensure_address|confirm_order|small_talk",
-  "query": "optional search text",
-  "productId": "optional product id",
-  "quantity": number,
-  "notes": "short natural language answer for the user (<= 40 words)",
-  "params": { "category": "optional", "brand": "optional" }
+  "query": "search keywords if applicable",
+  "productId": "product ID if applicable",
+  "quantity": 1,
+  "notes": "brief response to user (required, at least 5 words)",
+  "params": {"category": null, "brand": null}
 }
-Rules:
-- Always fill intent.
-- If user is browsing products, use intent=search_products and include query keywords.
-- If user asks details for one product, set intent=show_product_details, include productId when possible.
-- For cart add, use intent=add_to_cart with productId and quantity (default 1).
-- For favorites, use intent=add_favorite with productId.
-- If user wants to buy now, use intent=confirm_order with productId and quantity.
-- If user says "order it" or "buy this" or "purchase this", they mean the LAST product shown. Use that productId.
-- If address seems missing, use ensure_address with notes suggesting to add address in account.
-- Keep notes concise.
-`
+RULES:
+1. ALWAYS include "notes" with a natural response (never empty)
+2. For search, set intent=search_products with query
+3. For details, set intent=show_product_details
+4. For "order it/buy this", use last product ID with intent=confirm_order
+5. Keep responses helpful and concise`
 
 async function parseAIIntent(message, userId, lastProductId, retryCount = 0) {
   const MAX_RETRIES = 2
 
   try {
-    const model = genAI.getGenerativeModel({ model: 'gemini-3-flash-preview' })
-
     // Add context about last product if available
     let contextStr = SYSTEM_PROMPT
     if (lastProductId) {
       contextStr += `\n\nIMPORTANT: The user was just shown a product with ID: ${lastProductId}. If they say "order it", "buy this", "purchase this", use this productId.`
     }
 
-    const result = await model.generateContent({
-      contents: [
-        {
-          role: 'user',
-          parts: [{ text: contextStr + '\nUser: ' + message }],
-        },
-      ],
-    })
-    const text =
-      result?.response?.text?.() ||
-      result?.response?.candidates?.[0]?.content?.parts?.[0]?.text ||
-      '{}'
+    const prompt = contextStr + '\nUser: ' + message
 
-    console.log('Gemini raw response:', text)
+    console.log('Calling Ollama API:', OLLAMA_API)
+
+    const response = await axios.post(
+      OLLAMA_API,
+      {
+        model: OLLAMA_MODEL,
+        prompt: prompt,
+        stream: false,
+        temperature: 0.3, // Lower temp for more consistent JSON output
+      },
+      {
+        timeout: 30000,
+      },
+    )
+
+    const text = response.data.response || ''
+
+    console.log('Ollama raw response:', text)
 
     const jsonStart = text.indexOf('{')
     const jsonEnd = text.lastIndexOf('}')
@@ -179,10 +183,12 @@ async function chatInteractive(req, res) {
         console.log('Stored product context:', products[0]._id.toString())
       }
 
-      // Update notes if no products found
+      // Update notes if no products found or notes are empty
       if (products.length === 0) {
         payload.notes =
           "I couldn't find any matching products. Try searching with different keywords."
+      } else if (!payload.notes) {
+        payload.notes = `Found ${products.length} product(s) matching your search!`
       }
     }
 
