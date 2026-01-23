@@ -101,7 +101,10 @@ const ChatBot = () => {
             <button onClick={handleSendMessage} disabled={isLoading}>
               Send
             </button>
-            <button onClick={() => navigate('/shop/interactive')} className="ml-2">
+            <button
+              onClick={() => navigate('/shop/interactive')}
+              className="ml-2"
+            >
               Full Screen
             </button>
           </div>

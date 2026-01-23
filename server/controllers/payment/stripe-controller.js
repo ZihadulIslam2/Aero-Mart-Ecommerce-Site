@@ -38,10 +38,10 @@ async function createCheckoutSession(req, res) {
 async function stripeWebhook(req, res) {
   try {
     const sig = req.headers['stripe-signature']
-    let event;
+    let event
     try {
-      event = stripe.webhooks.constructEvent(req.body, sig, process.env.STRIPE_WEBHOOK_SECRET || '');
-        req.rawBody,
+      event = stripe.webhooks.constructEvent(
+        req.body,
         sig,
         process.env.STRIPE_WEBHOOK_SECRET || '',
       )
@@ -61,7 +61,7 @@ async function stripeWebhook(req, res) {
         paymentMethod: 'stripe',
         orderStatus: 'placed',
         orderDate: new Date(),
-      });
+      })
 
       // Send email confirmation (basic SMTP example)
       if (process.env.SMTP_HOST) {

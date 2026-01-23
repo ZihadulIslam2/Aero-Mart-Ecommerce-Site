@@ -27,7 +27,7 @@ import InteractiveChatPage from './pages/shopping-view/interactive-chat'
 
 function App() {
   const { user, isAuthenticated, isLoading } = useSelector(
-    (state) => state.auth
+    (state) => state.auth,
   )
   const dispatch = useDispatch()
 

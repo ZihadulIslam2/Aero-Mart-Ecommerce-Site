@@ -52,7 +52,10 @@ app.use(
 
 app.use(cookieParser())
 // Stripe webhook needs raw body for signature verification
-app.use('/api/payment/stripe/webhook', express.raw({ type: 'application/json' }))
+app.use(
+  '/api/payment/stripe/webhook',
+  express.raw({ type: 'application/json' }),
+)
 // For most routes use JSON parser
 app.use(express.json())
 app.use('/api/auth', authRouter)
