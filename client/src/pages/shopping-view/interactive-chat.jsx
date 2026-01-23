@@ -1,13 +1,17 @@
 import { useEffect, useRef, useState } from 'react'
 import axios from 'axios'
 import { useSelector } from 'react-redux'
+import { useNavigate } from 'react-router-dom'
+import { ShoppingBag, Send, Heart, X, ArrowLeft } from 'lucide-react'
 
 function InteractiveChatPage() {
+  const navigate = useNavigate()
   const { user, isAuthenticated } = useSelector((s) => s.auth)
   const [messages, setMessages] = useState([
     {
       role: 'bot',
-      content: 'Welcome to Interactive Mode. Ask me to find products or buy.',
+      content:
+        '👋 Welcome! I can help you find products, add to cart, and complete purchases. What are you looking for today?',
     },
   ])
   const [input, setInput] = useState('')
@@ -21,12 +25,21 @@ function InteractiveChatPage() {
     pincode: '',
     phone: '',
   })
-  const bodyRef = useRef(null)
+  const chatBodyRef = useRef(null)
+  const inputRef = useRef(null)
 
   useEffect(() => {
-    if (bodyRef.current)
-      bodyRef.current.scrollTop = bodyRef.current.scrollHeight
+    if (chatBodyRef.current) {
+      chatBodyRef.current.scrollTop = chatBodyRef.current.scrollHeight
+    }
   }, [messages])
+
+  const handleKeyPress = (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault()
+      sendMessage()
+    }
+  }
 
   async function sendMessage() {
     if (!input.trim()) return
@@ -142,168 +155,320 @@ function InteractiveChatPage() {
   }
 
   return (
-    <div className="w-screen h-screen bg-white flex flex-col">
-      <div className="flex justify-between items-center p-4 border-b">
-        <h1 className="text-xl font-semibold">Interactive Chat</h1>
-        <span className="text-sm">
-          {isAuthenticated ? 'Signed in' : 'Guest'}
-        </span>
+    <div className="w-screen h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex flex-col overflow-hidden">
+      {/* Header */}
+      <div className="bg-white border-b shadow-sm">
+        <div className="flex items-center justify-between px-6 py-4">
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => navigate('/shop/home')}
+              className="p-2 hover:bg-gray-100 rounded-full transition"
+            >
+              <ArrowLeft className="w-5 h-5" />
+            </button>
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900">
+                AI Shopping Assistant
+              </h1>
+              <p className="text-sm text-gray-500">Powered by Gemini</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-4">
+            <div className="text-sm">
+              <span className="px-3 py-1 rounded-full bg-green-100 text-green-700 font-medium">
+                {isAuthenticated
+                  ? `👤 ${user?.userName || 'User'}`
+                  : '👤 Guest'}
+              </span>
+            </div>
+          </div>
+        </div>
       </div>
-      <div className="flex-1 grid grid-cols-12">
-        <div className="col-span-7 border-r flex flex-col">
-          <div ref={bodyRef} className="flex-1 overflow-y-auto p-4 space-y-3">
+
+      {/* Main Content */}
+      <div className="flex-1 flex overflow-hidden">
+        {/* Chat Section */}
+        <div className="w-[55%] flex flex-col bg-white border-r">
+          {/* Messages */}
+          <div
+            ref={chatBodyRef}
+            className="flex-1 overflow-y-auto p-6 space-y-4"
+            style={{ scrollBehavior: 'smooth' }}
+          >
             {messages.map((m, idx) => (
               <div
-                key={idx}
-                className={m.role === 'bot' ? 'text-left' : 'text-right'}
+                key={`msg-${idx}`}
+                className={`flex ${m.role === 'bot' ? 'justify-start' : 'justify-end'} animate-fadeIn`}
               >
                 <div
-                  className={`inline-block px-3 py-2 rounded ${m.role === 'bot' ? 'bg-gray-100' : 'bg-blue-100'}`}
+                  className={`max-w-[75%] px-4 py-3 rounded-2xl shadow-sm ${
+                    m.role === 'bot'
+                      ? 'bg-gradient-to-br from-blue-50 to-blue-100 text-gray-800 rounded-tl-sm'
+                      : 'bg-gradient-to-br from-gray-800 to-gray-900 text-white rounded-tr-sm'
+                  }`}
                 >
-                  {m.content}
+                  <p className="text-sm leading-relaxed">{m.content}</p>
                 </div>
               </div>
             ))}
             {pending && (
-              <div className="text-left">
-                <div className="inline-block px-3 py-2 rounded bg-gray-100">
-                  ...
+              <div className="flex justify-start">
+                <div className="bg-blue-50 px-4 py-3 rounded-2xl rounded-tl-sm">
+                  <div className="flex gap-1">
+                    <span className="w-2 h-2 bg-blue-400 rounded-full animate-bounce"></span>
+                    <span className="w-2 h-2 bg-blue-400 rounded-full animate-bounce delay-100"></span>
+                    <span className="w-2 h-2 bg-blue-400 rounded-full animate-bounce delay-200"></span>
+                  </div>
                 </div>
               </div>
             )}
           </div>
-          <div className="p-3 border-t flex gap-2">
-            <input
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              className="flex-1 border rounded px-3 py-2"
-              placeholder="Ask for products, e.g. 'Show Nike shoes'"
-            />
-            <button
-              onClick={sendMessage}
-              className="px-4 py-2 bg-black text-white rounded"
-            >
-              Send
-            </button>
+
+          {/* Input */}
+          <div className="border-t bg-gray-50 p-4">
+            <div className="flex gap-3">
+              <input
+                ref={inputRef}
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyDown={handleKeyPress}
+                disabled={pending}
+                className="flex-1 border border-gray-300 rounded-full px-5 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100"
+                placeholder="Ask me anything... e.g., 'Show Nike shoes' or 'I want to buy'"
+              />
+              <button
+                onClick={sendMessage}
+                disabled={pending || !input.trim()}
+                className="px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-full hover:from-blue-700 hover:to-blue-800 disabled:opacity-50 disabled:cursor-not-allowed transition shadow-md hover:shadow-lg flex items-center gap-2"
+              >
+                <Send className="w-4 h-4" />
+                <span className="font-medium">Send</span>
+              </button>
+            </div>
           </div>
         </div>
-        <div className="col-span-5 flex flex-col">
-          <div className="p-4 border-b">
-            <h2 className="font-semibold">Results</h2>
-          </div>
-          <div className="flex-1 overflow-y-auto p-4 grid grid-cols-2 gap-3">
-            {products.map((p) => (
-              <div key={p.id} className="border rounded p-2">
-                {(p.image || (p.images && p.images[0])) && (
-                  <img
-                    src={p.image || p.images[0]}
-                    alt={p.title}
-                    className="w-full h-32 object-cover rounded mb-2"
-                  />
-                )}
-                <div className="font-medium">{p.title}</div>
-                <div className="text-sm text-gray-600">
-                  {p.brand} · {p.category}
-                </div>
-                <div className="mt-1">
-                  <span className="font-semibold">
-                    ${p.salePrice || p.price}
-                  </span>
-                  {p.salePrice && (
-                    <span className="ml-2 line-through text-gray-400">
-                      ${p.price}
-                    </span>
-                  )}
-                </div>
-                <div className="mt-2 text-xs text-gray-700 line-clamp-3">
-                  {p.description}
-                </div>
-                <button
-                  onClick={() => addToFavorite(p.id)}
-                  className="mt-2 px-2 py-1 text-xs bg-pink-100 text-pink-700 rounded hover:bg-pink-200"
-                >
-                  ♡ Save
-                </button>
+
+        {/* Results Section */}
+        <div className="w-[45%] flex flex-col bg-gray-50">
+          {/* Results Header */}
+          <div className="bg-white border-b px-6 py-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-lg font-semibold text-gray-900">
+                  <ShoppingBag className="w-5 h-5 inline mr-2" />
+                  Products
+                </h2>
+                <p className="text-xs text-gray-500 mt-1">
+                  {products.length} {products.length === 1 ? 'item' : 'items'}{' '}
+                  found
+                </p>
               </div>
-            ))}
-            {products.length === 0 && (
-              <div className="text-gray-500">
-                No items yet. Ask me to search.
+            </div>
+          </div>
+
+          {/* Products Grid */}
+          <div
+            className="flex-1 overflow-y-auto p-4"
+            style={{ scrollBehavior: 'smooth' }}
+          >
+            {products.length > 0 ? (
+              <div className="grid grid-cols-1 gap-4">
+                {products.map((p) => (
+                  <div
+                    key={p.id}
+                    className="bg-white rounded-xl border shadow-sm hover:shadow-md transition overflow-hidden group"
+                  >
+                    <div className="flex gap-4 p-4">
+                      {/* Product Image */}
+                      {(p.image || (p.images && p.images[0])) && (
+                        <div className="w-28 h-28 flex-shrink-0">
+                          <img
+                            src={p.image || p.images[0]}
+                            alt={p.title}
+                            className="w-full h-full object-cover rounded-lg"
+                          />
+                        </div>
+                      )}
+
+                      {/* Product Info */}
+                      <div className="flex-1 min-w-0">
+                        <h3 className="font-semibold text-gray-900 truncate group-hover:text-blue-600 transition">
+                          {p.title}
+                        </h3>
+                        <p className="text-xs text-gray-500 mt-1">
+                          {p.brand} • {p.category}
+                        </p>
+
+                        <div className="mt-2 flex items-baseline gap-2">
+                          <span className="text-lg font-bold text-gray-900">
+                            ${p.salePrice || p.price}
+                          </span>
+                          {p.salePrice && (
+                            <span className="text-sm line-through text-gray-400">
+                              ${p.price}
+                            </span>
+                          )}
+                          {p.salePrice && (
+                            <span className="text-xs px-2 py-0.5 bg-red-100 text-red-700 rounded-full font-medium">
+                              Save ${(p.price - p.salePrice).toFixed(2)}
+                            </span>
+                          )}
+                        </div>
+
+                        <p className="text-xs text-gray-600 mt-2 line-clamp-2">
+                          {p.description}
+                        </p>
+
+                        <button
+                          onClick={() => addToFavorite(p.id)}
+                          className="mt-3 px-3 py-1.5 text-xs font-medium bg-pink-50 text-pink-600 rounded-lg hover:bg-pink-100 transition flex items-center gap-1"
+                        >
+                          <Heart className="w-3 h-3" />
+                          Save to Favorites
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="flex flex-col items-center justify-center h-full text-center p-8">
+                <ShoppingBag className="w-16 h-16 text-gray-300 mb-4" />
+                <p className="text-gray-500 text-sm">No products yet</p>
+                <p className="text-gray-400 text-xs mt-1">
+                  Start by asking me to search for products
+                </p>
               </div>
             )}
           </div>
+          {/* Confirmation Panel */}
           {confirmation && (
-            <div className="p-4 border-t bg-gray-50">
-              <div className="font-semibold">Confirm Order</div>
-              <div className="text-sm">
-                {confirmation.product.title} × {confirmation.quantity}
+            <div className="border-t bg-gradient-to-br from-green-50 to-emerald-50 p-6 shadow-lg">
+              <div className="flex items-start justify-between mb-3">
+                <div>
+                  <h3 className="font-bold text-gray-900 text-lg">
+                    Confirm Purchase
+                  </h3>
+                  <p className="text-xs text-gray-600 mt-1">
+                    Review your order before payment
+                  </p>
+                </div>
+                <button
+                  onClick={() => setConfirmation(null)}
+                  className="p-1 hover:bg-white rounded-full transition"
+                >
+                  <X className="w-4 h-4 text-gray-400" />
+                </button>
               </div>
-              <div className="mt-1">Total: ${confirmation.total}</div>
-              <div className="mt-2 flex gap-2">
+
+              <div className="bg-white rounded-lg p-4 mb-4 border border-green-200">
+                <div className="flex justify-between items-center mb-2">
+                  <span className="font-medium text-gray-900">
+                    {confirmation.product.title}
+                  </span>
+                  <span className="text-sm text-gray-600">
+                    ×{confirmation.quantity}
+                  </span>
+                </div>
+                <div className="flex justify-between items-baseline">
+                  <span className="text-sm text-gray-600">Total Amount:</span>
+                  <span className="text-2xl font-bold text-green-600">
+                    ${confirmation.total.toFixed(2)}
+                  </span>
+                </div>
+              </div>
+
+              <div className="flex gap-3">
                 <button
                   onClick={confirmPurchase}
-                  className="px-4 py-2 bg-green-600 text-white rounded"
+                  className="flex-1 px-4 py-3 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-lg font-medium hover:from-green-700 hover:to-emerald-700 transition shadow-md hover:shadow-lg"
                 >
-                  Yes, pay
+                  ✓ Proceed to Payment
                 </button>
                 <button
                   onClick={() => setConfirmation(null)}
-                  className="px-4 py-2 bg-gray-200 rounded"
+                  className="px-4 py-3 bg-gray-200 text-gray-700 rounded-lg font-medium hover:bg-gray-300 transition"
                 >
                   Cancel
                 </button>
               </div>
             </div>
           )}
+
+          {/* Address Form */}
           {showAddressForm && (
-            <div className="p-4 border-t bg-yellow-50">
-              <div className="font-semibold">Add Shipping Address</div>
-              <input
-                type="text"
-                placeholder="Address"
-                value={addressForm.address}
-                onChange={(e) =>
-                  setAddressForm({ ...addressForm, address: e.target.value })
-                }
-                className="w-full border rounded px-2 py-1 mt-2 text-sm"
-              />
-              <input
-                type="text"
-                placeholder="City"
-                value={addressForm.city}
-                onChange={(e) =>
-                  setAddressForm({ ...addressForm, city: e.target.value })
-                }
-                className="w-full border rounded px-2 py-1 mt-1 text-sm"
-              />
-              <input
-                type="text"
-                placeholder="Pincode"
-                value={addressForm.pincode}
-                onChange={(e) =>
-                  setAddressForm({ ...addressForm, pincode: e.target.value })
-                }
-                className="w-full border rounded px-2 py-1 mt-1 text-sm"
-              />
-              <input
-                type="text"
-                placeholder="Phone"
-                value={addressForm.phone}
-                onChange={(e) =>
-                  setAddressForm({ ...addressForm, phone: e.target.value })
-                }
-                className="w-full border rounded px-2 py-1 mt-1 text-sm"
-              />
-              <div className="mt-2 flex gap-2">
+            <div className="border-t bg-gradient-to-br from-yellow-50 to-amber-50 p-6 shadow-lg">
+              <div className="flex items-start justify-between mb-3">
+                <div>
+                  <h3 className="font-bold text-gray-900 text-lg">
+                    Shipping Address
+                  </h3>
+                  <p className="text-xs text-gray-600 mt-1">
+                    We need your address to deliver
+                  </p>
+                </div>
+                <button
+                  onClick={() => setShowAddressForm(false)}
+                  className="p-1 hover:bg-white rounded-full transition"
+                >
+                  <X className="w-4 h-4 text-gray-400" />
+                </button>
+              </div>
+
+              <div className="space-y-3">
+                <input
+                  type="text"
+                  placeholder="Street Address"
+                  value={addressForm.address}
+                  onChange={(e) =>
+                    setAddressForm({ ...addressForm, address: e.target.value })
+                  }
+                  className="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-500"
+                />
+                <div className="grid grid-cols-2 gap-3">
+                  <input
+                    type="text"
+                    placeholder="City"
+                    value={addressForm.city}
+                    onChange={(e) =>
+                      setAddressForm({ ...addressForm, city: e.target.value })
+                    }
+                    className="border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-500"
+                  />
+                  <input
+                    type="text"
+                    placeholder="Pincode"
+                    value={addressForm.pincode}
+                    onChange={(e) =>
+                      setAddressForm({
+                        ...addressForm,
+                        pincode: e.target.value,
+                      })
+                    }
+                    className="border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-500"
+                  />
+                </div>
+                <input
+                  type="text"
+                  placeholder="Phone Number"
+                  value={addressForm.phone}
+                  onChange={(e) =>
+                    setAddressForm({ ...addressForm, phone: e.target.value })
+                  }
+                  className="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-500"
+                />
+              </div>
+
+              <div className="mt-4 flex gap-3">
                 <button
                   onClick={saveAddress}
-                  className="px-3 py-1 text-sm bg-blue-600 text-white rounded"
+                  className="flex-1 px-4 py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg font-medium hover:from-blue-700 hover:to-blue-800 transition shadow-md"
                 >
                   Save Address
                 </button>
                 <button
                   onClick={() => setShowAddressForm(false)}
-                  className="px-3 py-1 text-sm bg-gray-300 rounded"
+                  className="px-4 py-3 bg-gray-200 text-gray-700 rounded-lg font-medium hover:bg-gray-300 transition"
                 >
                   Skip
                 </button>
