@@ -1,9 +1,11 @@
 import { useState, useEffect, useRef } from 'react'
 import axios from 'axios'
 import './ChatBot.css'
+import { useNavigate } from 'react-router-dom'
 
 const ChatBot = () => {
   const [isOpen, setIsOpen] = useState(false)
+  const navigate = useNavigate()
   const [message, setMessage] = useState('')
   const [chatHistory, setChatHistory] = useState([
     {
@@ -98,6 +100,9 @@ const ChatBot = () => {
             />
             <button onClick={handleSendMessage} disabled={isLoading}>
               Send
+            </button>
+            <button onClick={() => navigate('/shop/interactive')} className="ml-2">
+              Full Screen
             </button>
           </div>
         </div>
