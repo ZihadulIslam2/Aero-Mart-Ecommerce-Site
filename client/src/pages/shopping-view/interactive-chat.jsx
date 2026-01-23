@@ -55,8 +55,10 @@ function InteractiveChatPage() {
         },
       )
       const data = res.data
-      if (data.notes)
-        setMessages((m) => [...m, { role: 'bot', content: data.notes }])
+      // Add bot response (use notes, or provide default if empty)
+      const botResponse =
+        data.notes || 'Processing your request. Let me search for that.'
+      setMessages((m) => [...m, { role: 'bot', content: botResponse }])
       setProducts(data.products || [])
       setConfirmation(data.confirmation || null)
       if (data.promptAddress) {

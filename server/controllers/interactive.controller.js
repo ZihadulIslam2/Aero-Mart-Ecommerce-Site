@@ -195,20 +195,35 @@ async function chatInteractive(req, res) {
     if (intent.intent === 'show_product_details') {
       let product = null
 
-      // First, try to find by productId if provided
+      // First, try to find by productId if provided (validate it's a valid ObjectId first)
       if (intent.productId) {
-        product = await Product.findById(intent.productId)
+        try {
+          // Check if productId looks like a valid MongoDB ObjectId (24 hex chars)
+          if (/^[a-f\d]{24}$/i.test(intent.productId)) {
+            product = await Product.findById(intent.productId)
+          }
+        } catch (e) {
+          console.warn('Invalid productId format:', intent.productId)
+          product = null
+        }
       }
-      // If no productId, try to search by query name
-      else if (intent.query) {
+
+      // If no productId found or invalid, try to search by query name
+      if (!product && intent.query) {
         const nameRegex = new RegExp(intent.query, 'i')
         product = await Product.findOne({
           $or: [{ title: nameRegex }, { description: nameRegex }],
         })
       }
+
       // Fall back to last product context
-      else if (lastProductId) {
-        product = await Product.findById(lastProductId)
+      if (!product && lastProductId) {
+        try {
+          product = await Product.findById(lastProductId)
+        } catch (e) {
+          console.warn('Invalid lastProductId:', lastProductId)
+          product = null
+        }
       }
 
       if (product) {
@@ -223,28 +238,40 @@ async function chatInteractive(req, res) {
     }
 
     if (intent.intent === 'add_to_cart' && intent.productId && userId) {
-      const qty = Number(intent.quantity || 1)
-      // Minimal cart add: upsert item in user's cart
-      let cart = await Cart.findOne({ userId })
-      if (!cart) cart = await Cart.create({ userId, items: [] })
-      const idx = cart.items.findIndex(
-        (i) => i.productId.toString() === intent.productId,
-      )
-      if (idx >= 0) cart.items[idx].quantity += qty
-      else cart.items.push({ productId: intent.productId, quantity: qty })
-      await cart.save()
-      payload.cart = { ok: true }
-      payload.notes ||= 'Added to your cart.'
+      // Validate ObjectId format
+      if (/^[a-f\d]{24}$/i.test(intent.productId)) {
+        const qty = Number(intent.quantity || 1)
+        // Minimal cart add: upsert item in user's cart
+        let cart = await Cart.findOne({ userId })
+        if (!cart) cart = await Cart.create({ userId, items: [] })
+        const idx = cart.items.findIndex(
+          (i) => i.productId.toString() === intent.productId,
+        )
+        if (idx >= 0) cart.items[idx].quantity += qty
+        else cart.items.push({ productId: intent.productId, quantity: qty })
+        await cart.save()
+        payload.cart = { ok: true }
+        payload.notes ||= 'Added to your cart.'
+      } else {
+        payload.notes =
+          'Invalid product ID. Please search for the product first.'
+      }
     }
 
     if (intent.intent === 'add_favorite' && userId && intent.productId) {
-      const fav = await Favorite.findOneAndUpdate(
-        { userId, productId: intent.productId },
-        { userId, productId: intent.productId },
-        { upsert: true, new: true },
-      )
-      payload.favorite = { ok: true, productId: intent.productId }
-      payload.notes ||= 'Saved to your favorites.'
+      // Validate ObjectId format
+      if (/^[a-f\d]{24}$/i.test(intent.productId)) {
+        const fav = await Favorite.findOneAndUpdate(
+          { userId, productId: intent.productId },
+          { userId, productId: intent.productId },
+          { upsert: true, new: true },
+        )
+        payload.favorite = { ok: true, productId: intent.productId }
+        payload.notes ||= 'Saved to your favorites.'
+      } else {
+        payload.notes =
+          'Invalid product ID. Please search for the product first.'
+      }
     }
 
     if (intent.intent === 'ensure_address' && userId) {
@@ -266,7 +293,17 @@ async function chatInteractive(req, res) {
       if (!productId) {
         payload.notes = 'Please select a product first by searching for it.'
       } else {
-        const p = await Product.findById(productId)
+        let p = null
+        try {
+          // Validate ObjectId format before querying
+          if (/^[a-f\d]{24}$/i.test(productId)) {
+            p = await Product.findById(productId)
+          }
+        } catch (e) {
+          console.warn('Invalid productId for checkout:', productId)
+          p = null
+        }
+
         const qty = Number(intent.quantity || 1)
         if (!p) {
           payload.notes = 'Product not found for checkout.'
