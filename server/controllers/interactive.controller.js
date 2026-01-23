@@ -38,7 +38,7 @@ async function parseAIIntent(message, userId, lastProductId, retryCount = 0) {
   const MAX_RETRIES = 2
 
   try {
-    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' })
+    const model = genAI.getGenerativeModel({ model: 'gemini-3-flash-preview' })
 
     // Add context about last product if available
     let contextStr = SYSTEM_PROMPT
@@ -186,12 +186,34 @@ async function chatInteractive(req, res) {
       }
     }
 
-    if (intent.intent === 'show_product_details' && intent.productId) {
-      const p = await Product.findById(intent.productId)
-      if (p) {
-        payload.product = normalizeProducts([p])[0]
-        if (userId) userContext.set(userId, intent.productId)
-      } else payload.notes = "I couldn't find that product."
+    if (intent.intent === 'show_product_details') {
+      let product = null
+
+      // First, try to find by productId if provided
+      if (intent.productId) {
+        product = await Product.findById(intent.productId)
+      }
+      // If no productId, try to search by query name
+      else if (intent.query) {
+        const nameRegex = new RegExp(intent.query, 'i')
+        product = await Product.findOne({
+          $or: [{ title: nameRegex }, { description: nameRegex }],
+        })
+      }
+      // Fall back to last product context
+      else if (lastProductId) {
+        product = await Product.findById(lastProductId)
+      }
+
+      if (product) {
+        const normalized = normalizeProducts([product])[0]
+        payload.product = normalized
+        payload.products = [normalized] // Also show as single product result
+        if (userId) userContext.set(userId, product._id.toString())
+        payload.notes ||= 'Here are the details for this product.'
+      } else {
+        payload.notes = "I couldn't find that product. Try searching again."
+      }
     }
 
     if (intent.intent === 'add_to_cart' && intent.productId && userId) {
