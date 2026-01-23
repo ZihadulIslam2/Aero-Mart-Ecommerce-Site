@@ -34,7 +34,9 @@ Rules:
 - Keep notes concise.
 `
 
-async function parseAIIntent(message, userId, lastProductId) {
+async function parseAIIntent(message, userId, lastProductId, retryCount = 0) {
+  const MAX_RETRIES = 2
+
   try {
     const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' })
 
@@ -61,17 +63,42 @@ async function parseAIIntent(message, userId, lastProductId) {
 
     const jsonStart = text.indexOf('{')
     const jsonEnd = text.lastIndexOf('}')
-    const raw = jsonStart !== -1 ? text.slice(jsonStart, jsonEnd + 1) : text
+
+    // Check if response is empty or just whitespace
+    if (jsonStart === -1 || jsonEnd === -1) {
+      throw new Error('No JSON found in response')
+    }
+
+    const raw = text.slice(jsonStart, jsonEnd + 1)
     const parsed = JSON.parse(raw)
+
+    // Check if parsed intent is valid (has intent field)
+    if (!parsed.intent) {
+      throw new Error('No intent in parsed response')
+    }
 
     console.log('Parsed intent:', parsed)
     return parsed
   } catch (e) {
-    console.error('parseAIIntent error:', e.message)
-    console.error('Full error:', e)
+    console.error(
+      `parseAIIntent error (attempt ${retryCount + 1}/${MAX_RETRIES + 1}):`,
+      e.message,
+    )
+
+    // Retry automatically if we haven't exceeded max retries
+    if (retryCount < MAX_RETRIES) {
+      console.log(`Retrying... (${retryCount + 1}/${MAX_RETRIES})`)
+      // Wait a bit before retrying
+      await new Promise((resolve) => setTimeout(resolve, 500))
+      return parseAIIntent(message, userId, lastProductId, retryCount + 1)
+    }
+
+    // If all retries exhausted, return fallback
+    console.error('All retries exhausted. Using fallback response.')
     return {
       intent: 'small_talk',
-      notes: 'I can help you search and order products.',
+      notes:
+        'I can help you search and order products. Try asking "Show me baby products".',
     }
   }
 }
