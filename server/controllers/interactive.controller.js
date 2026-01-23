@@ -3,9 +3,7 @@ const Product = require('../models/Product')
 const Cart = require('../models/Cart')
 const Address = require('../models/Address')
 const Order = require('../models/Order')
-
-// Simple favorites model placeholder (optional)
-// If you plan full favorites, create a dedicated model and routes.
+const Favorite = require('../models/Favorite')
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '')
 
@@ -131,7 +129,11 @@ async function chatInteractive(req, res) {
     }
 
     if (intent.intent === 'add_favorite' && userId && intent.productId) {
-      // Placeholder: respond success; implement Favorites model later
+      const fav = await Favorite.findOneAndUpdate(
+        { userId, productId: intent.productId },
+        { userId, productId: intent.productId },
+        { upsert: true, new: true }
+      )
       payload.favorite = { ok: true, productId: intent.productId }
       payload.notes ||= 'Saved to your favorites.'
     }
@@ -140,9 +142,11 @@ async function chatInteractive(req, res) {
       const addresses = await Address.find({ userId })
       payload.addressPresent = addresses.length > 0
       if (!payload.addressPresent) {
-        payload.notes ||= 'Please add a shipping address in your account.'
+        payload.promptAddress = true
+        payload.notes ||=
+          'Please add a shipping address. I can help you save one now.'
       } else {
-        payload.notes ||= 'Your address is on file.'
+        payload.notes ||= 'Your address is on file. Proceeding...'
       }
     }
 

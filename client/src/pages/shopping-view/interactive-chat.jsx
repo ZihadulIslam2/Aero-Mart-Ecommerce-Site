@@ -14,6 +14,13 @@ function InteractiveChatPage() {
   const [pending, setPending] = useState(false)
   const [products, setProducts] = useState([])
   const [confirmation, setConfirmation] = useState(null)
+  const [showAddressForm, setShowAddressForm] = useState(false)
+  const [addressForm, setAddressForm] = useState({
+    address: '',
+    city: '',
+    pincode: '',
+    phone: '',
+  })
   const bodyRef = useRef(null)
 
   useEffect(() => {
@@ -39,6 +46,9 @@ function InteractiveChatPage() {
         setMessages((m) => [...m, { role: 'bot', content: data.notes }])
       setProducts(data.products || [])
       setConfirmation(data.confirmation || null)
+      if (data.promptAddress) {
+        setShowAddressForm(true)
+      }
     } catch (e) {
       setMessages((m) => [
         ...m,
@@ -68,13 +78,63 @@ function InteractiveChatPage() {
         },
       )
       if (res.data?.url) {
-        window.location.href = res.data.url
+        globalThis.location.href = res.data.url
       }
-    } catch (e) {
+    } catch (err) {
+      console.error(err)
       setMessages((m) => [
         ...m,
         { role: 'bot', content: 'Could not start checkout.' },
       ])
+    }
+  }
+
+  async function saveAddress() {
+    if (
+      !addressForm.address ||
+      !addressForm.city ||
+      !addressForm.pincode ||
+      !addressForm.phone
+    ) {
+      setMessages((m) => [
+        ...m,
+        { role: 'bot', content: 'Please fill all address fields.' },
+      ])
+      return
+    }
+
+    try {
+      await axios.post('http://localhost:5000/api/shop/address/add', {
+        ...addressForm,
+        userId: user?._id,
+      })
+      setMessages((m) => [
+        ...m,
+        { role: 'bot', content: 'Address saved! Now you can proceed with checkout.' },
+      ])
+      setShowAddressForm(false)
+      setAddressForm({ address: '', city: '', pincode: '', phone: '' })
+    } catch (err) {
+      console.error(err)
+      setMessages((m) => [
+        ...m,
+        { role: 'bot', content: 'Failed to save address.' },
+      ])
+    }
+  }
+
+  async function addToFavorite(productId) {
+    try {
+      await axios.post('http://localhost:5000/api/shop/favorites/add', {
+        productId,
+        userId: user?._id,
+      })
+      setMessages((m) => [
+        ...m,
+        { role: 'bot', content: 'Added to favorites!' },
+      ])
+    } catch (err) {
+      console.error(err)
     }
   }
 
@@ -148,6 +208,12 @@ function InteractiveChatPage() {
                 <div className="mt-2 text-xs text-gray-700 line-clamp-3">
                   {p.description}
                 </div>
+                <button
+                  onClick={() => addToFavorite(p.id)}
+                  className="mt-2 px-2 py-1 text-xs bg-pink-100 text-pink-700 rounded hover:bg-pink-200"
+                >
+                  ♡ Save
+                </button>
               </div>
             ))}
             {products.length === 0 && (
@@ -175,6 +241,61 @@ function InteractiveChatPage() {
                   className="px-4 py-2 bg-gray-200 rounded"
                 >
                   Cancel
+                </button>
+              </div>
+            </div>
+          )}
+          {showAddressForm && (
+            <div className="p-4 border-t bg-yellow-50">
+              <div className="font-semibold">Add Shipping Address</div>
+              <input
+                type="text"
+                placeholder="Address"
+                value={addressForm.address}
+                onChange={(e) =>
+                  setAddressForm({ ...addressForm, address: e.target.value })
+                }
+                className="w-full border rounded px-2 py-1 mt-2 text-sm"
+              />
+              <input
+                type="text"
+                placeholder="City"
+                value={addressForm.city}
+                onChange={(e) =>
+                  setAddressForm({ ...addressForm, city: e.target.value })
+                }
+                className="w-full border rounded px-2 py-1 mt-1 text-sm"
+              />
+              <input
+                type="text"
+                placeholder="Pincode"
+                value={addressForm.pincode}
+                onChange={(e) =>
+                  setAddressForm({ ...addressForm, pincode: e.target.value })
+                }
+                className="w-full border rounded px-2 py-1 mt-1 text-sm"
+              />
+              <input
+                type="text"
+                placeholder="Phone"
+                value={addressForm.phone}
+                onChange={(e) =>
+                  setAddressForm({ ...addressForm, phone: e.target.value })
+                }
+                className="w-full border rounded px-2 py-1 mt-1 text-sm"
+              />
+              <div className="mt-2 flex gap-2">
+                <button
+                  onClick={saveAddress}
+                  className="px-3 py-1 text-sm bg-blue-600 text-white rounded"
+                >
+                  Save Address
+                </button>
+                <button
+                  onClick={() => setShowAddressForm(false)}
+                  className="px-3 py-1 text-sm bg-gray-300 rounded"
+                >
+                  Skip
                 </button>
               </div>
             </div>
