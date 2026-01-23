@@ -7,6 +7,9 @@ const Favorite = require('../models/Favorite')
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '')
 
+// In-memory session storage for context (userId -> last product)
+const userContext = new Map()
+
 // System instruction for tool-like JSON responses
 const SYSTEM_PROMPT = `
 You are Aero Mart's shopping assistant. Respond with a single JSON object only, no prose.
@@ -26,18 +29,26 @@ Rules:
 - For cart add, use intent=add_to_cart with productId and quantity (default 1).
 - For favorites, use intent=add_favorite with productId.
 - If user wants to buy now, use intent=confirm_order with productId and quantity.
+- If user says "order it" or "buy this" or "purchase this", they mean the LAST product shown. Use that productId.
 - If address seems missing, use ensure_address with notes suggesting to add address in account.
 - Keep notes concise.
 `
 
-async function parseAIIntent(message) {
+async function parseAIIntent(message, userId, lastProductId) {
   try {
-    const model = genAI.getGenerativeModel({ model: 'gemini-3-flash-preview' })
+    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' })
+
+    // Add context about last product if available
+    let contextStr = SYSTEM_PROMPT
+    if (lastProductId) {
+      contextStr += `\n\nIMPORTANT: The user was just shown a product with ID: ${lastProductId}. If they say "order it", "buy this", "purchase this", use this productId.`
+    }
+
     const result = await model.generateContent({
       contents: [
         {
           role: 'user',
-          parts: [{ text: SYSTEM_PROMPT + '\nUser: ' + message }],
+          parts: [{ text: contextStr + '\nUser: ' + message }],
         },
       ],
     })
@@ -87,7 +98,12 @@ async function chatInteractive(req, res) {
     if (!message) return res.status(400).json({ error: 'Message required' })
 
     console.log('User message:', message)
-    const intent = await parseAIIntent(message)
+
+    // Get last product context for this user
+    const lastProductId = userId ? userContext.get(userId) : null
+    console.log('Last product context:', lastProductId)
+
+    const intent = await parseAIIntent(message, userId, lastProductId)
     console.log('Extracted intent:', intent)
 
     // Default response payload
@@ -97,14 +113,11 @@ async function chatInteractive(req, res) {
       const keyword = intent.query || ''
       console.log('Searching products with keyword:', keyword)
 
-      // Build flexible search query
-      const searchTerms = keyword.split(/\s+/).filter((w) => w.length > 2)
-      const regex = keyword ? new RegExp(keyword, 'i') : null
-
       let q = {}
 
       // If we have search terms, use text search
-      if (regex) {
+      if (keyword) {
+        const regex = new RegExp(keyword, 'i')
         q.$or = [
           { title: regex },
           { description: regex },
@@ -128,10 +141,16 @@ async function chatInteractive(req, res) {
         q.brand = new RegExp(intent.params.brand, 'i')
       }
 
-      console.log('MongoDB query:', JSON.stringify(q))
+      console.log('MongoDB query:', JSON.stringify(q, null, 2))
       const products = await Product.find(q).limit(12)
       console.log('Found products:', products.length)
       payload.products = normalizeProducts(products)
+
+      // Store first product for context
+      if (products.length > 0 && userId) {
+        userContext.set(userId, products[0]._id.toString())
+        console.log('Stored product context:', products[0]._id.toString())
+      }
 
       // Update notes if no products found
       if (products.length === 0) {
@@ -142,8 +161,10 @@ async function chatInteractive(req, res) {
 
     if (intent.intent === 'show_product_details' && intent.productId) {
       const p = await Product.findById(intent.productId)
-      if (p) payload.product = normalizeProducts([p])[0]
-      else payload.notes = "I couldn't find that product."
+      if (p) {
+        payload.product = normalizeProducts([p])[0]
+        if (userId) userContext.set(userId, intent.productId)
+      } else payload.notes = "I couldn't find that product."
     }
 
     if (intent.intent === 'add_to_cart' && intent.productId && userId) {
@@ -183,18 +204,25 @@ async function chatInteractive(req, res) {
       }
     }
 
-    if (intent.intent === 'confirm_order' && userId && intent.productId) {
-      const p = await Product.findById(intent.productId)
-      const qty = Number(intent.quantity || 1)
-      if (!p) {
-        payload.notes = 'Product not found for checkout.'
+    if (intent.intent === 'confirm_order' && userId) {
+      // Use productId from intent, or fall back to last product context
+      const productId = intent.productId || lastProductId
+
+      if (!productId) {
+        payload.notes = 'Please select a product first by searching for it.'
       } else {
-        payload.confirmation = {
-          product: normalizeProducts([p])[0],
-          quantity: qty,
-          total: (p.salePrice || p.price) * qty,
+        const p = await Product.findById(productId)
+        const qty = Number(intent.quantity || 1)
+        if (!p) {
+          payload.notes = 'Product not found for checkout.'
+        } else {
+          payload.confirmation = {
+            product: normalizeProducts([p])[0],
+            quantity: qty,
+            total: (p.salePrice || p.price) * qty,
+          }
+          payload.notes ||= 'Confirm purchase?'
         }
-        payload.notes ||= 'Confirm purchase?'
       }
     }
 
