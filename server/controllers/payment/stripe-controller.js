@@ -6,9 +6,13 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '')
 
 async function createCheckoutSession(req, res) {
   try {
-    const { items, user } = req.body // items: [{name, price, quantity}] minimal for demo
+    const { items, user, metadata } = req.body // items: [{name, price, quantity}] minimal for demo
     if (!Array.isArray(items) || items.length === 0) {
       return res.status(400).json({ error: 'No items for checkout' })
+    }
+
+    if (!user?.id) {
+      return res.status(400).json({ error: 'UserId required' })
     }
 
     const line_items = items.map((it) => ({
@@ -25,9 +29,13 @@ async function createCheckoutSession(req, res) {
       line_items,
       success_url: `${process.env.CLIENT_URL || 'http://localhost:5173'}/shop/payment-success`,
       cancel_url: `${process.env.CLIENT_URL || 'http://localhost:5173'}/shop/checkout`,
-      metadata: { userId: user?.id || '' },
+      metadata: {
+        userId: user.id,
+        ...metadata,
+      },
     })
 
+    console.log('Stripe session created:', session.id, 'for userId:', user.id)
     res.json({ url: session.url })
   } catch (err) {
     console.error('stripe create session error', err)
@@ -52,16 +60,27 @@ async function stripeWebhook(req, res) {
 
     if (event.type === 'checkout.session.completed') {
       const session = event.data.object
-      // Minimal order record
-      await Order.create({
-        userId: session.metadata?.userId,
-        cartItems: [],
+      console.log('Payment success for userId:', session.metadata?.userId)
+
+      // Verify userId exists
+      if (!session.metadata?.userId) {
+        console.error('No userId in payment metadata!')
+        return res.status(400).send('No userId in metadata')
+      }
+
+      // Create order record with all details
+      const order = await Order.create({
+        userId: session.metadata.userId,
+        cartItems: session.metadata?.cartItems
+          ? JSON.parse(session.metadata.cartItems)
+          : [],
         totalAmount: session.amount_total / 100,
         paymentStatus: 'paid',
         paymentMethod: 'stripe',
         orderStatus: 'placed',
         orderDate: new Date(),
       })
+      console.log('Order created:', order._id)
 
       // Send email confirmation (basic SMTP example)
       if (process.env.SMTP_HOST) {

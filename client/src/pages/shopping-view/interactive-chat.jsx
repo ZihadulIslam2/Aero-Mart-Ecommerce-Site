@@ -82,6 +82,15 @@ function InteractiveChatPage() {
   async function confirmPurchase() {
     if (!confirmation) return
     const item = confirmation.product
+    // Use authenticated userId or sessionId as fallback
+    const userId = user?._id || sessionId
+    if (!userId) {
+      setMessages((m) => [
+        ...m,
+        { role: 'bot', content: 'Session error. Please refresh.' },
+      ])
+      return
+    }
     try {
       const res = await axios.post(
         'http://localhost:5000/api/payment/stripe/create-checkout-session',
@@ -93,7 +102,12 @@ function InteractiveChatPage() {
               quantity: confirmation.quantity,
             },
           ],
-          user: { id: user?._id },
+          user: { id: userId },
+          metadata: {
+            userId,
+            productId: item.id,
+            sessionId,
+          },
         },
       )
       if (res.data?.url) {
