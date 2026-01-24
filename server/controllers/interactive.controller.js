@@ -1,5 +1,6 @@
 // const { GoogleGenerativeAI } = require('@google/generative-ai')
 const axios = require('axios')
+const { getRedisClient } = require('../helpers/redis')
 const Product = require('../models/Product')
 const Cart = require('../models/Cart')
 const Address = require('../models/Address')
@@ -16,6 +17,11 @@ const OLLAMA_MODEL = process.env.OLLAMA_MODEL || 'llama3.1:8b'
 
 // In-memory session storage for context (userId -> last product)
 const userContext = new Map()
+// Extended user preferences/context (category, last query)
+const userPrefs = new Map()
+// Simple in-memory cache for product searches (used as fallback if Redis unavailable)
+const localCache = new Map()
+const CACHE_TTL_MS = 5 * 60 * 1000 // 5 minutes
 
 // System instruction for tool-like JSON responses
 const SYSTEM_PROMPT = `You are Aero Mart's shopping assistant. Respond with ONLY a valid JSON object, no other text.
@@ -25,16 +31,18 @@ const SYSTEM_PROMPT = `You are Aero Mart's shopping assistant. Respond with ONLY
   "productId": null,
   "quantity": 1,
   "notes": "brief response to user (required, at least 5 words)",
-  "params": {"category": null, "brand": null}
+  "params": {"category": null, "brand": null},
+  "confidence": 0.85
 }
 RULES:
 1. ALWAYS include "notes" with a natural response (never empty)
 2. NEVER put product IDs or database IDs in query field
-3. For questions like "how many stock", "what's the price", "tell me more" - the user is asking about LAST product shown
-4. For contextual references ("this product", "it", "that one", "stock", "price") - set intent=show_product_details with NO query
-5. For search, set intent=search_products with query (product name/keywords only)
-6. Never include IDs anywhere except productId field (which should be null)
-7. Keep responses helpful and concise`
+3. Provide confidence between 0 and 1 for the intent
+4. For questions like "how many stock", "what's the price", "tell me more" - the user is asking about LAST product shown
+5. For contextual references ("this product", "it", "that one", "stock", "price") - set intent=show_product_details with NO query
+6. For search, set intent=search_products with query (product name/keywords only)
+7. Never include IDs anywhere except productId field (which should be null)
+8. Keep responses helpful and concise`
 
 async function parseAIIntent(message, userId, lastProductId, retryCount = 0) {
   const MAX_RETRIES = 2
@@ -82,6 +90,12 @@ async function parseAIIntent(message, userId, lastProductId, retryCount = 0) {
     const raw = text.slice(jsonStart, jsonEnd + 1)
     const parsed = JSON.parse(raw)
 
+    // Normalize confidence
+    const conf = Number(parsed.confidence)
+    parsed.confidence = Number.isFinite(conf)
+      ? Math.max(0, Math.min(1, conf))
+      : 0.85
+
     // Check if parsed intent is valid (has intent field)
     if (!parsed.intent) {
       throw new Error('No intent in parsed response')
@@ -128,6 +142,49 @@ function normalizeProducts(products) {
   }))
 }
 
+function isFresh(ts) {
+  return Date.now() - ts < CACHE_TTL_MS
+}
+
+async function getSearchCache(key) {
+  // Try Redis first
+  try {
+    const client = await getRedisClient()
+    if (client?.isOpen) {
+      const raw = await client.get(key)
+      if (raw) return JSON.parse(raw)
+    }
+  } catch (e) {
+    console.warn('Redis get error (search cache):', e.message)
+  }
+
+  // Fallback to local cache
+  const entry = localCache.get(key)
+  if (entry && isFresh(entry.ts)) {
+    return entry.data
+  }
+  return null
+}
+
+async function setSearchCache(key, value) {
+  // Set in Redis
+  try {
+    const client = await getRedisClient()
+    if (client?.isOpen) {
+      await client.setEx(
+        key,
+        Math.floor(CACHE_TTL_MS / 1000),
+        JSON.stringify(value),
+      )
+    }
+  } catch (e) {
+    console.warn('Redis set error (search cache):', e.message)
+  }
+
+  // Always set local fallback
+  localCache.set(key, { data: value, ts: Date.now() })
+}
+
 async function chatInteractive(req, res) {
   try {
     // Use a session-based ID if user not authenticated
@@ -145,12 +202,50 @@ async function chatInteractive(req, res) {
     const intent = await parseAIIntent(message, userId, lastProductId)
     console.log('Extracted intent:', intent)
 
+    // Low confidence guardrail
+    if (intent.confidence < 0.35) {
+      return res.json({
+        intent: 'small_talk',
+        notes:
+          "I didn't fully catch that. Could you rephrase what you want to do (search, details, add to cart)?",
+      })
+    }
+
     // Default response payload
-    const payload = { notes: intent.notes || '', intent: intent.intent }
+    const payload = {
+      notes: intent.notes || '',
+      intent: intent.intent,
+      confidence: intent.confidence,
+    }
 
     if (intent.intent === 'search_products') {
       const keyword = intent.query || ''
       console.log('Searching products with keyword:', keyword)
+
+      const cacheKey = JSON.stringify({
+        keyword: keyword.toLowerCase(),
+        category: intent.params?.category?.toLowerCase?.() || null,
+        brand: intent.params?.brand?.toLowerCase?.() || null,
+      })
+
+      const now = Date.now()
+      const cached = await getSearchCache(cacheKey)
+      if (cached) {
+        console.log('Serving products from cache')
+        payload.products = cached
+        if (payload.products.length > 0 && userId) {
+          userContext.set(userId, payload.products[0].id)
+          userPrefs.set(userId, {
+            lastProductId: payload.products[0].id,
+            lastQuery: keyword,
+            lastCategory: intent.params?.category || null,
+          })
+        }
+        if (!payload.notes) {
+          payload.notes = `Found ${payload.products.length} product(s) matching your search!`
+        }
+        return res.json(payload)
+      }
 
       let q = {}
 
@@ -185,10 +280,19 @@ async function chatInteractive(req, res) {
       console.log('Found products:', products.length)
       payload.products = normalizeProducts(products)
 
-      // Store first product for context
+      // Cache normalized products
+      await setSearchCache(cacheKey, payload.products)
+
+      // Store first product for context and preferences
       if (products.length > 0 && userId) {
-        userContext.set(userId, products[0]._id.toString())
-        console.log('Stored product context:', products[0]._id.toString())
+        const firstId = products[0]._id.toString()
+        userContext.set(userId, firstId)
+        userPrefs.set(userId, {
+          lastProductId: firstId,
+          lastQuery: keyword,
+          lastCategory: intent.params?.category || null,
+        })
+        console.log('Stored product context:', firstId)
       }
 
       // Update notes if no products found or notes are empty
@@ -197,6 +301,21 @@ async function chatInteractive(req, res) {
           "I couldn't find any matching products. Try searching with different keywords."
       } else if (!payload.notes) {
         payload.notes = `Found ${products.length} product(s) matching your search!`
+      }
+
+      // Lightweight summary (RAG-style without extra AI call)
+      if (products.length > 0) {
+        const top = payload.products.slice(0, 3)
+        const summaryList = top
+          .map((p) => {
+            const priceVal = Number(p.salePrice ?? p.price ?? 0)
+            const priceText = Number.isFinite(priceVal)
+              ? priceVal.toFixed(2)
+              : 'N/A'
+            return `${p.title} ($${priceText})`
+          })
+          .join(', ')
+        payload.summary = `Top picks: ${summaryList}`
       }
     }
 
@@ -253,6 +372,23 @@ async function chatInteractive(req, res) {
         } catch (e) {
           console.warn('Invalid lastProductId:', lastProductId)
           product = null
+        }
+      }
+
+      // If still nothing, try user preferences lastProductId
+      if (!product) {
+        const prefs = userPrefs.get(userId)
+        if (prefs?.lastProductId) {
+          try {
+            product = await Product.findById(prefs.lastProductId)
+            console.log(
+              'Using prefs lastProductId context, found:',
+              product ? product.title : 'none',
+            )
+          } catch (e) {
+            console.warn('Invalid prefs lastProductId:', prefs.lastProductId)
+            product = null
+          }
         }
       }
 
