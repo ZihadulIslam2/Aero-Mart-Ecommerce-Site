@@ -1,6 +1,21 @@
 const axios = require('axios')
 const Product = require('../models/Product')
 
+// Safely fetch products; if DB is down (e.g., Atlas IP whitelist), return empty list so chat can still respond
+async function fetchProductsSafe() {
+  try {
+    return await Product.find({}).select(
+      'title description category brand price salePrice totalStock',
+    )
+  } catch (err) {
+    console.error(
+      'Product fetch failed, continuing without catalog:',
+      err.message,
+    )
+    return []
+  }
+}
+
 // System context for the AI chatbot
 const getSystemContext = (products) => {
   const productList = products
@@ -10,9 +25,14 @@ const getSystemContext = (products) => {
           p.brand
         }, Price: $${p.price}${
           p.salePrice ? ` (Sale: $${p.salePrice})` : ''
-        }, Stock: ${p.totalStock}`
+        }, Stock: ${p.totalStock}`,
     )
     .join('\n')
+
+  const catalogSection =
+    productList && productList.trim().length > 0
+      ? `AVAILABLE PRODUCTS:\n${productList}`
+      : `AVAILABLE PRODUCTS:\n- Catalog is currently unavailable. Offer to help with general questions.`
 
   return `
   ******** Important: make with in 30 words. do not give responce in more then 30 word:****
@@ -33,8 +53,7 @@ ABOUT AERO MART:
 - Categories: Men's wear, Women's wear
 - Contact for help: zihadul708@gmail.com
 
-AVAILABLE PRODUCTS:
-${productList}
+${catalogSection}
 
 When answering:
 - If asked about products, mention specific items with prices and details
@@ -52,10 +71,8 @@ const chatWithAI = async (req, res) => {
     const { message } = req.body
     console.log('User message:', message)
 
-    // Fetch current products from database for up-to-date information
-    const products = await Product.find({}).select(
-      'title description category brand price salePrice totalStock'
-    )
+    // Fetch current products from database for up-to-date information (fails safe if DB is unreachable)
+    const products = await fetchProductsSafe()
 
     // Build context-aware prompt
     const systemContext = getSystemContext(products)
@@ -68,7 +85,7 @@ Assistant Response:`
     const response = await axios.post(
       'http://localhost:11434/api/generate',
       {
-        model: 'tinyllama',
+        model: 'orca-mini:3b',
         prompt: fullPrompt,
         stream: false,
         options: {
@@ -78,8 +95,8 @@ Assistant Response:`
         },
       },
       {
-        timeout: 100000, // 30 second timeout
-      }
+        timeout: 1000000, // 30 second timeout
+      },
     )
 
     res.json({
