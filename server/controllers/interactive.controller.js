@@ -1,4 +1,4 @@
-// const { GoogleGenerativeAI } = require('@google/generative-ai')
+const { GoogleGenerativeAI } = require('@google/generative-ai')
 const axios = require('axios')
 const { getRedisClient } = require('../helpers/redis')
 const Product = require('../models/Product')
@@ -7,10 +7,11 @@ const Address = require('../models/Address')
 const Order = require('../models/Order')
 const Favorite = require('../models/Favorite')
 
-// Commented out Gemini - using local Ollama instead
-// const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '')
+// Initialize Gemini AI (try to use it, fallback to Ollama on errors)
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '')
+const GEMINI_MODEL = 'gemini-3-flash-preview'
 
-// Ollama API endpoint (running locally on port 11434)
+// Ollama API endpoint (running locally on port 11434) - fallback
 const OLLAMA_API =
   process.env.OLLAMA_API || 'http://localhost:11434/api/generate'
 const OLLAMA_MODEL = process.env.OLLAMA_MODEL || 'llama3.1:8b'
@@ -30,7 +31,7 @@ const SYSTEM_PROMPT = `You are Aero Mart's shopping assistant. Respond with ONLY
   "query": "product name or search keywords (NOT an ID - only use for text search)",
   "productId": null,
   "quantity": 1,
-  "notes": "brief response to user (required, at least 5 words)",
+  "notes": "brief response to user (required, at least 20 words)",
   "params": {"category": null, "brand": null},
   "confidence": 0.85
 }
@@ -44,7 +45,13 @@ RULES:
 7. Never include IDs anywhere except productId field (which should be null)
 8. Keep responses helpful and concise`
 
-async function parseAIIntent(message, userId, lastProductId, retryCount = 0) {
+async function parseAIIntent(
+  message,
+  userId,
+  lastProductId,
+  retryCount = 0,
+  triedGemini = false,
+) {
   const MAX_RETRIES = 2
 
   try {
@@ -60,7 +67,68 @@ async function parseAIIntent(message, userId, lastProductId, retryCount = 0) {
       message +
       '\n\nRespond with ONLY valid JSON (no other text).'
 
-    console.log('Calling Ollama API:', OLLAMA_API)
+    // Try Gemini first if we haven't already
+    if (!triedGemini && process.env.GEMINI_API_KEY) {
+      try {
+        console.log('Attempting to use Gemini AI...')
+        const model = genAI.getGenerativeModel({ model: GEMINI_MODEL })
+        const result = await model.generateContent(prompt)
+        const text = result.response.text()
+
+        console.log('Gemini raw response:', text)
+
+        const jsonStart = text.indexOf('{')
+        const jsonEnd = text.lastIndexOf('}')
+
+        if (jsonStart === -1 || jsonEnd === -1) {
+          throw new Error('No JSON found in Gemini response')
+        }
+
+        const raw = text.slice(jsonStart, jsonEnd + 1)
+        const parsed = JSON.parse(raw)
+
+        // Normalize confidence
+        const conf = Number(parsed.confidence)
+        parsed.confidence = Number.isFinite(conf)
+          ? Math.max(0, Math.min(1, conf))
+          : 0.85
+
+        // Check if parsed intent is valid
+        if (!parsed.intent) {
+          throw new Error('No intent in Gemini response')
+        }
+
+        console.log('✓ Successfully parsed with Gemini:', parsed)
+        return parsed
+      } catch (geminiErr) {
+        const errMsg = geminiErr.message || ''
+
+        // Check for rate limit, quota, or authentication errors
+        if (
+          geminiErr.status === 429 ||
+          geminiErr.status === 403 ||
+          geminiErr.status === 401 ||
+          errMsg.includes('Resource has been exhausted') ||
+          errMsg.includes('RESOURCE_EXHAUSTED') ||
+          errMsg.includes('quota') ||
+          errMsg.includes('rate limit')
+        ) {
+          console.warn(
+            'Gemini limit/quota/auth error detected:',
+            geminiErr.message,
+          )
+          console.log('Falling back to Ollama...')
+          // Fall through to Ollama below
+        } else {
+          // For other errors, retry or fall through
+          console.warn('Gemini error (non-quota):', geminiErr.message)
+          console.log('Falling back to Ollama...')
+        }
+      }
+    }
+
+    // Use Ollama as fallback
+    console.log('Calling Ollama API (fallback):', OLLAMA_API)
 
     const response = await axios.post(
       OLLAMA_API,
@@ -68,7 +136,7 @@ async function parseAIIntent(message, userId, lastProductId, retryCount = 0) {
         model: OLLAMA_MODEL,
         prompt: prompt,
         stream: false,
-        temperature: 0.3, // Lower temp for more consistent JSON output
+        temperature: 0.3,
       },
       {
         timeout: 30000,
@@ -82,9 +150,8 @@ async function parseAIIntent(message, userId, lastProductId, retryCount = 0) {
     const jsonStart = text.indexOf('{')
     const jsonEnd = text.lastIndexOf('}')
 
-    // Check if response is empty or just whitespace
     if (jsonStart === -1 || jsonEnd === -1) {
-      throw new Error('No JSON found in response')
+      throw new Error('No JSON found in Ollama response')
     }
 
     const raw = text.slice(jsonStart, jsonEnd + 1)
@@ -96,12 +163,11 @@ async function parseAIIntent(message, userId, lastProductId, retryCount = 0) {
       ? Math.max(0, Math.min(1, conf))
       : 0.85
 
-    // Check if parsed intent is valid (has intent field)
     if (!parsed.intent) {
       throw new Error('No intent in parsed response')
     }
 
-    console.log('Parsed intent:', parsed)
+    console.log('✓ Successfully parsed with Ollama:', parsed)
     return parsed
   } catch (e) {
     console.error(
@@ -112,9 +178,8 @@ async function parseAIIntent(message, userId, lastProductId, retryCount = 0) {
     // Retry automatically if we haven't exceeded max retries
     if (retryCount < MAX_RETRIES) {
       console.log(`Retrying... (${retryCount + 1}/${MAX_RETRIES})`)
-      // Wait a bit before retrying
       await new Promise((resolve) => setTimeout(resolve, 500))
-      return parseAIIntent(message, userId, lastProductId, retryCount + 1)
+      return parseAIIntent(message, userId, lastProductId, retryCount + 1, true)
     }
 
     // If all retries exhausted, return fallback

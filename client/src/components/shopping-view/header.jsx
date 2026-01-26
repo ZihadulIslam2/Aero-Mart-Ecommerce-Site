@@ -98,7 +98,7 @@ function HeaderRightContent() {
         title="Ask AI Assistant"
       >
         <MessageCircle className="w-4 h-4" />
-        <span className="hidden sm:inline">AI Chat</span>
+        <span className="hidden sm:inline">Interactive mode</span>
       </Button>
 
       <Sheet open={openCartSheet} onOpenChange={() => setOpenCartSheet(false)}>
