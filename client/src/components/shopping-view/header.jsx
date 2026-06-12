@@ -40,32 +40,32 @@ function MenuItems() {
     sessionStorage.removeItem('filters')
     const currentFilter =
       getCurrentMenuItem.id !== 'home' &&
-      getCurrentMenuItem.id !== 'products' &&
-      getCurrentMenuItem.id !== 'search'
+        getCurrentMenuItem.id !== 'products' &&
+        getCurrentMenuItem.id !== 'search'
         ? {
-            category: [getCurrentMenuItem.id],
-          }
+          category: [getCurrentMenuItem.id],
+        }
         : null
 
     sessionStorage.setItem('filters', JSON.stringify(currentFilter))
 
     location.pathname.includes('listing') && currentFilter !== null
       ? setSearchParams(
-          new URLSearchParams(`?category=${getCurrentMenuItem.id}`),
-        )
+        new URLSearchParams(`?category=${getCurrentMenuItem.id}`),
+      )
       : navigate(getCurrentMenuItem.path)
   }
 
   return (
-    <nav className="flex flex-col mb-3 lg:mb-0 lg:items-center gap-6 lg:flex-row">
+    <nav className="flex flex-col mb-3 lg:mb-0 lg:items-center gap-8 lg:flex-row">
       {shoppingViewHeaderMenuItems.map((menuItem) => (
-        <Label
+        <span
           onClick={() => handleNavigate(menuItem)}
-          className="text-sm font-medium cursor-pointer"
+          className="text-xs font-bold tracking-[0.2em] uppercase cursor-pointer hover:text-gray-500 transition-colors"
           key={menuItem.id}
         >
           {menuItem.label}
-        </Label>
+        </span>
       ))}
     </nav>
   )
@@ -126,8 +126,8 @@ function HeaderRightContent() {
 
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Avatar className="bg-black">
-            <AvatarFallback className="bg-black text-white font-extrabold">
+          <Avatar className="bg-primary">
+            <AvatarFallback className="bg-primary text-primary-foreground font-extrabold">
               {user?.userName[0].toUpperCase()}
             </AvatarFallback>
           </Avatar>
@@ -154,30 +154,40 @@ function ShoppingHeader() {
   const { isAuthenticated } = useSelector((state) => state.auth)
 
   return (
-    <header className="sticky top-0 z-40 w-full border-b bg-background">
-      <div className="flex h-16 items-center justify-between px-4 md:px-6">
-        <Link to="/shop/home" className="flex items-center gap-2">
-          <HousePlug className="h-6 w-6" />
-          <span className="font-bold">Ecommerce</span>
+    <header className="sticky top-0 z-40 w-full border-b border-gray-100 bg-white/80 backdrop-blur-md">
+      <div className="flex h-20 items-center justify-between px-4 md:px-10 max-w-7xl mx-auto">
+        <Link to="/shop/home" className="flex items-center gap-2 group">
+          <span className="font-bold text-2xl tracking-tighter group-hover:text-gray-600 transition-colors">AERO-MART</span>
         </Link>
-        <Sheet>
-          <SheetTrigger asChild>
-            <Button variant="outline" size="icon" className="lg:hidden">
-              <Menu className="h-6 w-6" />
-              <span className="sr-only">Toggle header menu</span>
-            </Button>
-          </SheetTrigger>
-          <SheetContent side="left" className="w-full max-w-xs">
-            <MenuItems />
-            <HeaderRightContent />
-          </SheetContent>
-        </Sheet>
+
         <div className="hidden lg:block">
           <MenuItems />
         </div>
 
-        <div className="hidden lg:block">
-          <HeaderRightContent />
+        <div className="flex items-center gap-4">
+          <Sheet>
+            <SheetTrigger asChild>
+              <Button variant="ghost" size="icon" className="lg:hidden">
+                <Menu className="h-6 w-6" />
+                <span className="sr-only">Toggle header menu</span>
+              </Button>
+            </SheetTrigger>
+            <SheetContent side="left" className="w-full max-w-xs p-10">
+              <div className="flex flex-col gap-8 h-full">
+                <div className="flex items-center gap-2">
+                  <span className="font-bold text-xl tracking-tighter">AERO-MART</span>
+                </div>
+                <MenuItems />
+                <div className="mt-auto">
+                  <HeaderRightContent />
+                </div>
+              </div>
+            </SheetContent>
+          </Sheet>
+
+          <div className="hidden lg:block">
+            <HeaderRightContent />
+          </div>
         </div>
       </div>
     </header>

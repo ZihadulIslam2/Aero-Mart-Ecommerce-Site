@@ -22,6 +22,8 @@
     "@radix-ui/react-toast": "^1.2.1",
     "@reduxjs/toolkit": "^2.2.7",
     "axios": "^1.7.4",
+    "baseline-browser-mapping": "^2.10.36",
+    "caniuse-lite": "^1.0.30001799",
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.1.1",
     "lucide-react": "^0.429.0",
